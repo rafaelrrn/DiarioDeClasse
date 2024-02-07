@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @CrossOrigin
-@RequestMapping("/user")
+@RequestMapping("/usuario")
 public class UsuarioController extends DefaultController {
     final private static Logger LOG = LogManager.getLogger(UsuarioController.class);
 
