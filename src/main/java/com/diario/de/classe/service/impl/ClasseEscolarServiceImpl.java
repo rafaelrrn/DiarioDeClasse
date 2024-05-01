@@ -48,7 +48,7 @@ public class ClasseEscolarServiceImpl implements ClasseEscolarService {
     @Override
     public ClasseEscolar atualizarClasse(Long codCls, String classeEscolarBody, ClasseEscolar classeEscolarDoBanco) {
         ClasseEscolar classeEscolarRecebida = conversorObjetoEntidadeUtil.converterObjetoEmEntidade(classeEscolarBody, ClasseEscolar.class);
-        classeEscolarDoBanco = classeEscolarPopulator.atualizaClasseEscolar(classeEscolarRecebida, classeEscolarDoBanco);
+        classeEscolarDoBanco = classeEscolarPopulator.atualizaClasseEscolar(classeEscolarRecebida, classeEscolarDoBanco); //TODO: trocar pelo GlobalPopulator
         return classeEscolarRepositoryJpa.save(classeEscolarDoBanco);
     }
 
