@@ -1,13 +1,13 @@
 package com.diario.de.classe.service.impl;
 
-import com.diario.de.classe.model.Professor;
+import com.diario.de.classe.model.old.Professor;
+import com.diario.de.classe.populator.GlobalPopulator;
 import com.diario.de.classe.repository.jpa.ProfessorRepositoryJpa;
-import com.diario.de.classe.response.ResponseDiarioDeClasse;
-import com.diario.de.classe.service.ProfessorService;
+import com.diario.de.classe.service.old.ProfessorService;
+import com.diario.de.classe.util.ConversorObjetoEntidadeUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,29 +16,54 @@ import java.util.Optional;
 @Service
 public class ProfessorServiceImpl implements ProfessorService {
 
-    @Value("${geral.erro.nao.encontrado.msg}")
-    private String NOT_FOUND_MSG;
+    final private static Logger LOG = LogManager.getLogger(Professor.class);
 
     @Autowired
-    ProfessorRepositoryJpa professorRepositoryJpa;
+    private ProfessorRepositoryJpa professorRepositoryJpa;
 
     @Autowired
-    ResponseDiarioDeClasse responseDiarioDeClasse;
+    ConversorObjetoEntidadeUtil conversorObjetoEntidadeUtil;
+
+    @Autowired
+    private GlobalPopulator globalPopulator;
 
     @Override
-    public ResponseEntity<Object> buscarTodosProfessores() {
-        List<Professor> allProfessors = professorRepositoryJpa.findAll();
-
-        if (allProfessors.isEmpty()) return responseDiarioDeClasse.error(NOT_FOUND_MSG, HttpStatus.NOT_FOUND);
-        return responseDiarioDeClasse.success(allProfessors, HttpStatus.OK);
+    public List<Professor> buscarTodosProfessores() {
+        return professorRepositoryJpa.findAll();
     }
 
     @Override
-    public ResponseEntity<Object> buscarProfessorByCodPrf(Long codPrf){
+    public Professor buscarProfessorByCodPrf(Long codPrf){
+
+
         Optional<Professor> professor = professorRepositoryJpa.findById(codPrf);
+        return professor.orElseGet(Professor::new);
 
-        if (professor.isEmpty())  return responseDiarioDeClasse.error(NOT_FOUND_MSG, HttpStatus.NOT_FOUND);
-        return responseDiarioDeClasse.success(professor, HttpStatus.OK);
     }
+
+    @Override
+    public Professor criarProfessor(Professor professor) {
+        return professorRepositoryJpa.save(professor);
+    }
+
+    @Override
+    public Professor atualizarProfessor(Long codPrf, String professorBody, Professor professorDoBanco) {
+
+        Professor professorRecebido = conversorObjetoEntidadeUtil.converterObjetoEmEntidade(professorBody, Professor.class);
+
+        // Usar o GenericPopulator para copiar as propriedades não nulas
+        globalPopulator.updateGenericObj(professorRecebido, professorDoBanco);
+
+        // Persistir as alterações no banco de dados
+        return professorRepositoryJpa.save(professorDoBanco);
+
+    }
+
+    @Override
+    public Professor deletarProfessor(Professor professor) {
+         professorRepositoryJpa.delete(professor);
+        return professor;
+    }
+
 
 }

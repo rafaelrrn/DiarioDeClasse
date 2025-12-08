@@ -2,20 +2,20 @@ package com.diario.de.classe;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
-@PropertySource(value = {"classpath:application.properties", "classpath:message.properties"})
+@EnableJpaAuditing
 public class Application {
 
-	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-		return application.sources(Application.class);
-	}
-
 	public static void main(String[] args) {
-		SpringApplication.run(Application.class, args);
-
+		try {
+			System.out.println("Iniciando aplicacao...");
+			SpringApplication.run(Application.class, args);
+			System.out.println("Aplicacao iniciada com sucesso!");
+		} catch (Exception e) {
+			System.err.println("Erro ao iniciar aplicacao: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
-
 }

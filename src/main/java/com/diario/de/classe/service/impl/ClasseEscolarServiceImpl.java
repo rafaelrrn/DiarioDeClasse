@@ -1,9 +1,9 @@
 package com.diario.de.classe.service.impl;
 
-import com.diario.de.classe.model.ClasseEscolar;
+import com.diario.de.classe.model.old.ClasseEscolar;
 import com.diario.de.classe.populator.ClasseEscolarPopulator;
 import com.diario.de.classe.repository.jpa.ClasseEscolarRepositoryJpa;
-import com.diario.de.classe.service.ClasseEscolarService;
+import com.diario.de.classe.service.old.ClasseEscolarService;
 import com.diario.de.classe.util.ConversorObjetoEntidadeUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
