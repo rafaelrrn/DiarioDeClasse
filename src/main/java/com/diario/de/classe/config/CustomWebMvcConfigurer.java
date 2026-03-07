@@ -1,6 +1,6 @@
 package com.diario.de.classe.config;
 
-import com.diario.de.classe.interceptor.RequestLoggingInterceptor;
+import com.diario.de.classe.shared.interceptor.RequestLoggingInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
