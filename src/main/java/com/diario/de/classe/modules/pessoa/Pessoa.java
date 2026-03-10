@@ -1,13 +1,10 @@
 package com.diario.de.classe.modules.pessoa;
 
+import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
 
 /**
  * Representa qualquer pessoa no sistema (aluno, professor, responsável, etc.).
@@ -15,14 +12,15 @@ import java.util.Date;
  * O tipo é determinado pelo relacionamento com TipoPessoa.
  * Alunos são Pessoas do tipo ALUNO; professores são Pessoas do tipo PROFESSOR, etc.
  *
- * TODO (Etapa 2): Migrar para estender BaseEntity com campos ativo/deletedAt.
+ * Soft delete: ao invés de excluir, o campo 'ativo' é definido como false
+ * e 'deletedAt' recebe a data da desativação (herdado de BaseEntity).
  */
 @Entity
 @Table(name = "pessoa")
 @Data
 @ToString
-@EntityListeners(AuditingEntityListener.class)
-public class Pessoa {
+@EqualsAndHashCode(callSuper = true)
+public class Pessoa extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,14 +46,4 @@ public class Pessoa {
 
     @Column(name = "obs")
     private String obs;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }

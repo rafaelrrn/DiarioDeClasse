@@ -4,19 +4,16 @@ import com.diario.de.classe.modules.instituicao.Curso;
 import com.diario.de.classe.modules.instituicao.InstituicaoEnsino;
 import com.diario.de.classe.modules.instituicao.Turno;
 import com.diario.de.classe.modules.pessoa.Pessoa;
+import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
+import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "classe")
 @Data
-@EntityListeners(AuditingEntityListener.class)
-public class Classe {
+@EqualsAndHashCode(callSuper = true)
+public class Classe extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -52,14 +49,4 @@ public class Classe {
     @JoinColumn(name = "id_professor", nullable = false, referencedColumnName = "id_pessoa",
             foreignKey = @ForeignKey(name = "fk_id_professor"))
     private Pessoa pessoa;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }

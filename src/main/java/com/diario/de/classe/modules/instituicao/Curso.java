@@ -1,13 +1,10 @@
 package com.diario.de.classe.modules.instituicao;
 
+import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
 
 /**
  * Representa um curso oferecido pela instituição.
@@ -18,8 +15,8 @@ import java.util.Date;
 @Table(name = "curso")
 @Data
 @ToString
-@EntityListeners(AuditingEntityListener.class)
-public class Curso {
+@EqualsAndHashCode(callSuper = true)
+public class Curso extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,14 +37,4 @@ public class Curso {
     @JoinColumn(name = "id_serie", nullable = false, referencedColumnName = "id_serie",
             foreignKey = @ForeignKey(name = "fk_id_serie"))
     private Serie serie;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }

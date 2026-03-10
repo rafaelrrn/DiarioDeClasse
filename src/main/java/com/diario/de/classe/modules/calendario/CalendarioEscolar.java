@@ -1,19 +1,16 @@
 package com.diario.de.classe.modules.calendario;
 
 import com.diario.de.classe.modules.turma.Classe;
+import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
+import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "calendario_escolar")
 @Data
-@EntityListeners(AuditingEntityListener.class)
-public class CalendarioEscolar {
+@EqualsAndHashCode(callSuper = true)
+public class CalendarioEscolar extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,14 +42,4 @@ public class CalendarioEscolar {
 
     @Column(name = "dias_avaliacoes")
     private String diasAvaliacoes;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }

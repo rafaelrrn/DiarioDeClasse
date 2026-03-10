@@ -1,19 +1,16 @@
 package com.diario.de.classe.modules.turma;
 
 import com.diario.de.classe.modules.pessoa.Pessoa;
+import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
+import lombok.EqualsAndHashCode;
 
 @Entity
 @Table(name = "aluno_turma")
 @Data
-@EntityListeners(AuditingEntityListener.class)
-public class AlunoTurma {
+@EqualsAndHashCode(callSuper = true)
+public class AlunoTurma extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,14 +29,4 @@ public class AlunoTurma {
 
     @Column(name = "obs")
     private String obs;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }
