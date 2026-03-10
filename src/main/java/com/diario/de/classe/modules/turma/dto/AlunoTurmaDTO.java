@@ -7,7 +7,6 @@ import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
-import java.util.Date;
 
 @Data
 public class AlunoTurmaDTO implements Serializable {
@@ -23,9 +22,6 @@ public class AlunoTurmaDTO implements Serializable {
 
     @Size(max = 255)
     private String obs;
-
-    private Date createdAt;
-    private Date updatedAt;
 
     public AlunoTurmaDTO() {}
 

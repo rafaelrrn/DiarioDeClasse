@@ -25,9 +25,6 @@ public class AvaliacaoDTO implements Serializable {
     @Size(max = 255)
     private String dia;
 
-    private Date createdAt;
-    private Date updatedAt;
-
     public AvaliacaoDTO() {}
 
     public AvaliacaoDTO(Avaliacao entity) {
@@ -37,8 +34,6 @@ public class AvaliacaoDTO implements Serializable {
             this.idCalendarioEscolar = entity.getCalendarioEscolar() != null ? entity.getCalendarioEscolar().getIdCalendarioEscolar() : null;
             this.materia = entity.getMateria();
             this.dia = entity.getDia();
-            this.createdAt = entity.getCreatedAt();
-            this.updatedAt = entity.getUpdatedAt();
         }
     }
 }

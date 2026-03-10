@@ -6,7 +6,6 @@ import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
-import java.util.Date;
 
 @Data
 public class ClasseDTO implements Serializable {
@@ -30,9 +29,6 @@ public class ClasseDTO implements Serializable {
 
     @NotNull
     private Long idProfessor;
-
-    private Date createdAt;
-    private Date updatedAt;
 
     public ClasseDTO() {}
 

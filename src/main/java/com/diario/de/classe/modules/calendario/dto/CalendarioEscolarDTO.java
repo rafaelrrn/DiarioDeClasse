@@ -7,7 +7,6 @@ import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
-import java.util.Date;
 
 @Data
 public class CalendarioEscolarDTO implements Serializable {
@@ -31,9 +30,6 @@ public class CalendarioEscolarDTO implements Serializable {
 
     @Size(max = 255)
     private String diasAvaliacoes;
-
-    private Date createdAt;
-    private Date updatedAt;
 
     public CalendarioEscolarDTO() {}
 
