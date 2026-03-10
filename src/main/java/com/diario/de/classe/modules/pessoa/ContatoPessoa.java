@@ -1,21 +1,18 @@
 package com.diario.de.classe.modules.pessoa;
 
+import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
 
 /** Tabela de associação entre Pessoa e Contato (N:N com atributo 'nome'). */
 @Entity
 @Table(name = "contato_pessoa")
 @Data
 @ToString
-@EntityListeners(AuditingEntityListener.class)
-public class ContatoPessoa {
+@EqualsAndHashCode(callSuper = true)
+public class ContatoPessoa extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,14 +31,4 @@ public class ContatoPessoa {
 
     @Column(name = "nome")
     private String nome;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }

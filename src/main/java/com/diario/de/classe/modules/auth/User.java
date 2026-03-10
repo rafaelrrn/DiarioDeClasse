@@ -1,14 +1,11 @@
 package com.diario.de.classe.modules.auth;
 
+import com.diario.de.classe.shared.BaseEntity;
 import com.diario.de.classe.shared.security.Role;
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.util.Date;
 
 /**
  * Entidade que representa um usuário com acesso ao sistema.
@@ -16,14 +13,15 @@ import java.util.Date;
  * Separada de Pessoa para isolar a autenticação do domínio pedagógico.
  * O campo 'role' determina o nível de acesso conforme o enum Role.
  *
- * TODO (Etapa 2): Migrar para estender BaseEntity e adicionar soft delete.
+ * Soft delete: usuários desativados mantêm o histórico de ações no sistema
+ * (herdado de BaseEntity).
  */
 @Entity
 @Table(name = "users")
 @Data
 @ToString
-@EntityListeners(AuditingEntityListener.class)
-public class User {
+@EqualsAndHashCode(callSuper = true)
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,14 +40,4 @@ public class User {
     /** Perfil de acesso — define as permissões via @PreAuthorize */
     @Enumerated(EnumType.STRING)
     private Role role;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @CreatedDate
-    private Date createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    @Temporal(TemporalType.TIMESTAMP)
-    @LastModifiedDate
-    private Date updatedAt;
 }
