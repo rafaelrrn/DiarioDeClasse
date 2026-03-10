@@ -7,37 +7,54 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class MaskingPatternLayout extends PatternLayout {
 
-    private Pattern multilinePattern;
-    private List<String> maskPatterns = new ArrayList<>();
+    private final List<Pattern> maskPatterns = new ArrayList<>();
 
     public void addMaskPattern(String maskPattern) {
-        maskPatterns.add(maskPattern);
-        multilinePattern = Pattern.compile(maskPatterns.stream().collect(Collectors.joining("|")), Pattern.MULTILINE);
+        maskPatterns.add(Pattern.compile(maskPattern, Pattern.MULTILINE));
     }
 
     @Override
     public String doLayout(ILoggingEvent event) {
-        return maskMessage(super.doLayout(event));
-    }
+        String message = super.doLayout(event);
 
-    private String maskMessage(String message) {
-        if (multilinePattern == null) {
+        if (maskPatterns.isEmpty()) {
             return message;
         }
-        StringBuilder sb = new StringBuilder(message);
-        Matcher matcher = multilinePattern.matcher(sb);
-        while (matcher.find()) {
-            IntStream.rangeClosed(1, matcher.groupCount()).forEach(group -> {
-                if (matcher.group(group) != null) {
-                    IntStream.range(matcher.start(group), matcher.end(group)).forEach(i -> sb.setCharAt(i, '*'));
+
+        String maskedMessage = message;
+
+        for (Pattern pattern : maskPatterns) {
+            Matcher matcher = pattern.matcher(maskedMessage);
+            StringBuffer sb = new StringBuffer();
+
+            while (matcher.find()) {
+
+                String value = matcher.group(1);
+
+                String maskedValue;
+
+                if (value.contains("@")) {
+                    // EMAIL
+                    int atIndex = value.indexOf("@");
+                    maskedValue = "***" + value.substring(atIndex);
+                } else if (value.length() > 4) {
+                    // CPF / dados gerais
+                    maskedValue = "***" + value.substring(value.length() - 4);
+                } else {
+                    // SENHAS CURTAS
+                    maskedValue = "***";
                 }
-            });
+
+                matcher.appendReplacement(sb, matcher.group().replace(value, maskedValue));
+            }
+
+            matcher.appendTail(sb);
+            maskedMessage = sb.toString();
         }
-        return sb.toString();
+
+        return maskedMessage;
     }
 }
