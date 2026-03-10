@@ -18,7 +18,7 @@ public class EnsinoController {
     private final EnsinoService service;
     public EnsinoController(EnsinoService service) { this.service = service; }
 
-    @Operation(summary = "Listar todos")
+    @Operation(summary = "Listar Todos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
     public ResponseEntity<List<EnsinoDTO>> listar() {
