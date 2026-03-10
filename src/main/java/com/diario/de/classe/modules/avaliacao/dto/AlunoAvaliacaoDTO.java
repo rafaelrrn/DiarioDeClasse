@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Date;
 
 @Data
 public class AlunoAvaliacaoDTO implements Serializable {
@@ -25,9 +24,6 @@ public class AlunoAvaliacaoDTO implements Serializable {
     @Size(max = 255)
     private String obs;
 
-    private Date createdAt;
-    private Date updatedAt;
-
     public AlunoAvaliacaoDTO() {}
 
     public AlunoAvaliacaoDTO(AlunoAvaliacao entity) {
@@ -37,8 +33,6 @@ public class AlunoAvaliacaoDTO implements Serializable {
             this.idAvaliacao = entity.getAvaliacao() != null ? entity.getAvaliacao().getIdAvaliacao() : null;
             this.nota = entity.getNota();
             this.obs = entity.getObs();
-            this.createdAt = entity.getCreatedAt();
-            this.updatedAt = entity.getUpdatedAt();
         }
     }
 }
