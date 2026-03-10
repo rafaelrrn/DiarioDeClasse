@@ -20,7 +20,7 @@ public class AnoCalendarioController {
 
     public AnoCalendarioController(AnoCalendarioService service) { this.service = service; }
 
-    @Operation(summary = "Listar todos os anos")
+    @Operation(summary = "Listar Todos os anos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
     public ResponseEntity<List<AnoCalendarioDTO>> listar() {
