@@ -41,6 +41,16 @@
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!-- Flyway: gerenciamento de migrations do banco de dados -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<!-- flyway-mysql é obrigatório para MySQL/MariaDB no Flyway 9+ -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+		</dependency>
 		<!--	Database - End	-->
 
 		<!--	Spring boot - Start	-->
