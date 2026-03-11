@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.instituicao;
 
 import com.diario.de.classe.modules.instituicao.dto.SerieDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -21,40 +22,40 @@ public class SerieController {
     @Operation(summary = "Listar todos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<SerieDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(SerieDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<SerieDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(SerieDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<SerieDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new SerieDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<SerieDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new SerieDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<SerieDTO> criar(@RequestBody SerieDTO dto) {
+    public ResponseEntity<ApiResponse<SerieDTO>> criar(@RequestBody SerieDTO dto) {
         Serie entity = new Serie();
         BeanUtils.copyProperties(dto, entity, "idSerie");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new SerieDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new SerieDTO(service.criar(entity)), "Série criada com sucesso"));
     }
 
     @Operation(summary = "Atualizar")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<SerieDTO> atualizar(@PathVariable Long id, @RequestBody SerieDTO dto) {
+    public ResponseEntity<ApiResponse<SerieDTO>> atualizar(@PathVariable Long id, @RequestBody SerieDTO dto) {
         Serie dados = new Serie();
         BeanUtils.copyProperties(dto, dados, "idSerie");
-        return ResponseEntity.ok(new SerieDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new SerieDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

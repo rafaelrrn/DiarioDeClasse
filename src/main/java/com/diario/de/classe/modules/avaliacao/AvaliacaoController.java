@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.avaliacao;
 
 import com.diario.de.classe.modules.avaliacao.dto.AvaliacaoDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
@@ -22,43 +23,43 @@ public class AvaliacaoController {
     @Operation(summary = "Listar todas as avaliações")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @GetMapping
-    public ResponseEntity<List<AvaliacaoDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(AvaliacaoDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<AvaliacaoDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(AvaliacaoDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar avaliação por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<AvaliacaoDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new AvaliacaoDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<AvaliacaoDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new AvaliacaoDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar avaliação")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @PostMapping
-    public ResponseEntity<AvaliacaoDTO> criar(@RequestBody AvaliacaoDTO dto) {
+    public ResponseEntity<ApiResponse<AvaliacaoDTO>> criar(@RequestBody AvaliacaoDTO dto) {
         Avaliacao entity = new Avaliacao();
         entity.setMateria(dto.getMateria());
         entity.setDia(dto.getDia());
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new AvaliacaoDTO(service.criar(entity, dto.getIdDisciplina(), dto.getIdCalendarioEscolar())));
+                .body(ApiResponse.ok(new AvaliacaoDTO(service.criar(entity, dto.getIdDisciplina(), dto.getIdCalendarioEscolar())), "Avaliação criada com sucesso"));
     }
 
     @Operation(summary = "Atualizar avaliação")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<AvaliacaoDTO> atualizar(@PathVariable Long id, @RequestBody AvaliacaoDTO dto) {
+    public ResponseEntity<ApiResponse<AvaliacaoDTO>> atualizar(@PathVariable Long id, @RequestBody AvaliacaoDTO dto) {
         Avaliacao dados = new Avaliacao();
         dados.setMateria(dto.getMateria());
         dados.setDia(dto.getDia());
-        return ResponseEntity.ok(new AvaliacaoDTO(service.atualizar(id, dados, dto.getIdDisciplina(), dto.getIdCalendarioEscolar())));
+        return ResponseEntity.ok(ApiResponse.ok(new AvaliacaoDTO(service.atualizar(id, dados, dto.getIdDisciplina(), dto.getIdCalendarioEscolar()))));
     }
 
     @Operation(summary = "Excluir avaliação")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

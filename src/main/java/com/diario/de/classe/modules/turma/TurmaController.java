@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.turma;
 
 import com.diario.de.classe.modules.turma.dto.TurmaDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -23,40 +24,40 @@ public class TurmaController {
     @Operation(summary = "Listar todas as turmas")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<TurmaDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(TurmaDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<TurmaDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(TurmaDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar turma por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<TurmaDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new TurmaDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<TurmaDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new TurmaDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar nova turma")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<TurmaDTO> criar(@RequestBody TurmaDTO dto) {
+    public ResponseEntity<ApiResponse<TurmaDTO>> criar(@RequestBody TurmaDTO dto) {
         Turma entity = new Turma();
         BeanUtils.copyProperties(dto, entity, "idTurma");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new TurmaDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new TurmaDTO(service.criar(entity)), "Turma criada com sucesso"));
     }
 
     @Operation(summary = "Atualizar turma")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<TurmaDTO> atualizar(@PathVariable Long id, @RequestBody TurmaDTO dto) {
+    public ResponseEntity<ApiResponse<TurmaDTO>> atualizar(@PathVariable Long id, @RequestBody TurmaDTO dto) {
         Turma dados = new Turma();
         BeanUtils.copyProperties(dto, dados, "idTurma");
-        return ResponseEntity.ok(new TurmaDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new TurmaDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir turma")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

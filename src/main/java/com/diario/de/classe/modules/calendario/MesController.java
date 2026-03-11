@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.calendario;
 
 import com.diario.de.classe.modules.calendario.dto.MesDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -23,40 +24,40 @@ public class MesController {
     @Operation(summary = "Listar todos os meses")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<MesDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(MesDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<MesDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(MesDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar mês por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<MesDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new MesDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<MesDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new MesDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar mês")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<MesDTO> criar(@RequestBody MesDTO dto) {
+    public ResponseEntity<ApiResponse<MesDTO>> criar(@RequestBody MesDTO dto) {
         Mes entity = new Mes();
         BeanUtils.copyProperties(dto, entity, "idMes");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new MesDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new MesDTO(service.criar(entity)), "Mês criado com sucesso"));
     }
 
     @Operation(summary = "Atualizar mês")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<MesDTO> atualizar(@PathVariable Long id, @RequestBody MesDTO dto) {
+    public ResponseEntity<ApiResponse<MesDTO>> atualizar(@PathVariable Long id, @RequestBody MesDTO dto) {
         Mes dados = new Mes();
         BeanUtils.copyProperties(dto, dados, "idMes");
-        return ResponseEntity.ok(new MesDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new MesDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir mês")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

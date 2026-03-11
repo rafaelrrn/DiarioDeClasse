@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.calendario;
 
 import com.diario.de.classe.modules.calendario.dto.PeriodoDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -23,40 +24,40 @@ public class PeriodoController {
     @Operation(summary = "Listar todos os períodos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<PeriodoDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(PeriodoDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<PeriodoDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(PeriodoDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar período por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<PeriodoDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new PeriodoDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<PeriodoDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new PeriodoDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar período")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<PeriodoDTO> criar(@RequestBody PeriodoDTO dto) {
+    public ResponseEntity<ApiResponse<PeriodoDTO>> criar(@RequestBody PeriodoDTO dto) {
         Periodo entity = new Periodo();
         BeanUtils.copyProperties(dto, entity, "idPeriodo");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new PeriodoDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new PeriodoDTO(service.criar(entity)), "Período criado com sucesso"));
     }
 
     @Operation(summary = "Atualizar período")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<PeriodoDTO> atualizar(@PathVariable Long id, @RequestBody PeriodoDTO dto) {
+    public ResponseEntity<ApiResponse<PeriodoDTO>> atualizar(@PathVariable Long id, @RequestBody PeriodoDTO dto) {
         Periodo dados = new Periodo();
         BeanUtils.copyProperties(dto, dados, "idPeriodo");
-        return ResponseEntity.ok(new PeriodoDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new PeriodoDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir período")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }
