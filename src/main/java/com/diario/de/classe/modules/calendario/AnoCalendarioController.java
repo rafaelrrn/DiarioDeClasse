@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.calendario;
 
 import com.diario.de.classe.modules.calendario.dto.AnoCalendarioDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -23,40 +24,40 @@ public class AnoCalendarioController {
     @Operation(summary = "Listar Todos os anos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<AnoCalendarioDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(AnoCalendarioDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<AnoCalendarioDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(AnoCalendarioDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar ano por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<AnoCalendarioDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new AnoCalendarioDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<AnoCalendarioDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new AnoCalendarioDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar ano calendário")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<AnoCalendarioDTO> criar(@RequestBody AnoCalendarioDTO dto) {
+    public ResponseEntity<ApiResponse<AnoCalendarioDTO>> criar(@RequestBody AnoCalendarioDTO dto) {
         AnoCalendario entity = new AnoCalendario();
         BeanUtils.copyProperties(dto, entity, "idAnoCalendario");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AnoCalendarioDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new AnoCalendarioDTO(service.criar(entity)), "Ano calendário criado com sucesso"));
     }
 
     @Operation(summary = "Atualizar ano calendário")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<AnoCalendarioDTO> atualizar(@PathVariable Long id, @RequestBody AnoCalendarioDTO dto) {
+    public ResponseEntity<ApiResponse<AnoCalendarioDTO>> atualizar(@PathVariable Long id, @RequestBody AnoCalendarioDTO dto) {
         AnoCalendario dados = new AnoCalendario();
         BeanUtils.copyProperties(dto, dados, "idAnoCalendario");
-        return ResponseEntity.ok(new AnoCalendarioDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new AnoCalendarioDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir ano calendário")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

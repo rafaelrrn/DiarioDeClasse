@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.pessoa;
 
 import com.diario.de.classe.modules.pessoa.dto.ContatoDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -25,40 +26,40 @@ public class ContatoController {
     @Operation(summary = "Listar todos os contatos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<ContatoDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(ContatoDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<ContatoDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(ContatoDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar contato por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<ContatoDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new ContatoDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<ContatoDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new ContatoDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar novo contato")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @PostMapping
-    public ResponseEntity<ContatoDTO> criar(@RequestBody ContatoDTO dto) {
+    public ResponseEntity<ApiResponse<ContatoDTO>> criar(@RequestBody ContatoDTO dto) {
         Contato entity = new Contato();
         BeanUtils.copyProperties(dto, entity, "idContato");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new ContatoDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new ContatoDTO(service.criar(entity)), "Contato criado com sucesso"));
     }
 
     @Operation(summary = "Atualizar contato")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<ContatoDTO> atualizar(@PathVariable Long id, @RequestBody ContatoDTO dto) {
+    public ResponseEntity<ApiResponse<ContatoDTO>> atualizar(@PathVariable Long id, @RequestBody ContatoDTO dto) {
         Contato dados = new Contato();
         BeanUtils.copyProperties(dto, dados, "idContato");
-        return ResponseEntity.ok(new ContatoDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new ContatoDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir contato")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

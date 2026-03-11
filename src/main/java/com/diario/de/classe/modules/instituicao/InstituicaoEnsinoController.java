@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.instituicao;
 
 import com.diario.de.classe.modules.instituicao.dto.InstituicaoEnsinoDTO;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
@@ -21,40 +22,40 @@ public class InstituicaoEnsinoController {
     @Operation(summary = "Listar todos")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping
-    public ResponseEntity<List<InstituicaoEnsinoDTO>> listar() {
-        return ResponseEntity.ok(service.buscarTodos().stream().map(InstituicaoEnsinoDTO::new).toList());
+    public ResponseEntity<ApiResponse<List<InstituicaoEnsinoDTO>>> listar() {
+        return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(InstituicaoEnsinoDTO::new).toList()));
     }
 
     @Operation(summary = "Buscar por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @GetMapping("/{id}")
-    public ResponseEntity<InstituicaoEnsinoDTO> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(new InstituicaoEnsinoDTO(service.buscarPorId(id)));
+    public ResponseEntity<ApiResponse<InstituicaoEnsinoDTO>> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(new InstituicaoEnsinoDTO(service.buscarPorId(id))));
     }
 
     @Operation(summary = "Criar")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping
-    public ResponseEntity<InstituicaoEnsinoDTO> criar(@RequestBody InstituicaoEnsinoDTO dto) {
+    public ResponseEntity<ApiResponse<InstituicaoEnsinoDTO>> criar(@RequestBody InstituicaoEnsinoDTO dto) {
         InstituicaoEnsino entity = new InstituicaoEnsino();
         BeanUtils.copyProperties(dto, entity, "idInstituicaoEnsino");
-        return ResponseEntity.status(HttpStatus.CREATED).body(new InstituicaoEnsinoDTO(service.criar(entity)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(new InstituicaoEnsinoDTO(service.criar(entity)), "Instituição de ensino criada com sucesso"));
     }
 
     @Operation(summary = "Atualizar")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}")
-    public ResponseEntity<InstituicaoEnsinoDTO> atualizar(@PathVariable Long id, @RequestBody InstituicaoEnsinoDTO dto) {
+    public ResponseEntity<ApiResponse<InstituicaoEnsinoDTO>> atualizar(@PathVariable Long id, @RequestBody InstituicaoEnsinoDTO dto) {
         InstituicaoEnsino dados = new InstituicaoEnsino();
         BeanUtils.copyProperties(dto, dados, "idInstituicaoEnsino");
-        return ResponseEntity.ok(new InstituicaoEnsinoDTO(service.atualizar(id, dados)));
+        return ResponseEntity.ok(ApiResponse.ok(new InstituicaoEnsinoDTO(service.atualizar(id, dados))));
     }
 
     @Operation(summary = "Excluir")
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
     }
 }

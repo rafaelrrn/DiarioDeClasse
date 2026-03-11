@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.auth;
 
 import com.diario.de.classe.modules.auth.dto.UserMeResponse;
+import com.diario.de.classe.shared.dto.ApiResponse;
 import com.diario.de.classe.shared.security.JwtService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,13 +14,13 @@ import org.springframework.web.bind.annotation.*;
  * Controller de autenticação: registro, login, logout e dados do usuário logado.
  *
  * Rotas públicas (liberadas no SecurityConfig):
- *   POST /auth/register
- *   POST /auth/login
- *   POST /auth/logout
- *   GET  /auth/me
+ *   POST /v1/auth/register
+ *   POST /v1/auth/login
+ *   POST /v1/auth/logout
+ *   GET  /v1/auth/me
  */
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/v1/auth")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -34,14 +35,16 @@ public class AuthController {
 
     /**
      * Registra um novo usuário, codificando a senha antes de persistir.
+     * A entidade User não é exposta diretamente — retorna apenas confirmação.
      *
      * @param user Dados do usuário (nome, email, senha, role)
-     * @return Usuário persistido (sem a senha em texto claro — TODO: usar DTO de resposta)
+     * @return Confirmação de registro sem expor dados sensíveis
      */
     @PostMapping("/register")
-    public User register(@RequestBody User user) {
+    public ResponseEntity<ApiResponse<Void>> register(@RequestBody User user) {
         user.setSenha(passwordEncoder.encode(user.getSenha()));
-        return userRepository.save(user);
+        userRepository.save(user);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Usuário registrado com sucesso"));
     }
 
     /**
@@ -54,7 +57,7 @@ public class AuthController {
      * @param response Resposta HTTP onde o cookie será adicionado
      */
     @PostMapping("/login")
-    public ResponseEntity<Void> login(@RequestBody User user, HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<Void>> login(@RequestBody User user, HttpServletResponse response) {
         var userFromDb = userRepository.findByEmail(user.getEmail())
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
@@ -72,14 +75,14 @@ public class AuthController {
 
         response.addCookie(cookie);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Login realizado com sucesso"));
     }
 
     /**
      * Encerra a sessão do usuário limpando o cookie de autenticação.
      */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
+    public ResponseEntity<ApiResponse<Void>> logout(HttpServletResponse response) {
         Cookie cookie = new Cookie("auth_token", null);
         cookie.setHttpOnly(true);
         cookie.setPath("/");
@@ -87,7 +90,7 @@ public class AuthController {
 
         response.addCookie(cookie);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(ApiResponse.ok(null, "Logout realizado com sucesso"));
     }
 
     /**
@@ -97,7 +100,7 @@ public class AuthController {
      * @return Dados básicos do usuário (id, email, nome, role)
      */
     @GetMapping("/me")
-    public UserMeResponse me(HttpServletRequest request) {
+    public ResponseEntity<ApiResponse<UserMeResponse>> me(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) throw new RuntimeException("Não autenticado");
 
@@ -118,6 +121,8 @@ public class AuthController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        return new UserMeResponse(user.getIdUsers(), user.getEmail(), user.getNome(), user.getRole());
+        return ResponseEntity.ok(ApiResponse.ok(
+                new UserMeResponse(user.getIdUsers(), user.getEmail(), user.getNome(), user.getRole())
+        ));
     }
 }
