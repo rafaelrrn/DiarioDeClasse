@@ -1,5 +1,6 @@
 package com.diario.de.classe.modules.turma;
 
+import com.diario.de.classe.modules.turma.dto.AlunoTurmaDTO;
 import com.diario.de.classe.modules.turma.dto.TurmaDTO;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,12 +15,16 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v1/turmas")
-@Tag(name = "Turma", description = "Gerenciamento de turmas")
+@Tag(name = "Turma", description = "Gerenciamento de turmas e matrículas de alunos")
 public class TurmaController {
 
     private final TurmaService service;
+    private final AlunoTurmaService alunoTurmaService;
 
-    public TurmaController(TurmaService service) { this.service = service; }
+    public TurmaController(TurmaService service, AlunoTurmaService alunoTurmaService) {
+        this.service = service;
+        this.alunoTurmaService = alunoTurmaService;
+    }
 
     @Operation(summary = "Listar todas as turmas")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
@@ -59,5 +64,48 @@ public class TurmaController {
     public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
         service.deletar(id);
         return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Endpoints de matrícula — alunos de uma turma
+    // -------------------------------------------------------------------------
+
+    /**
+     * Lista todos os alunos ativamente matriculados em uma turma.
+     *
+     * Retorna apenas matrículas com ativo=true — histórico de ex-alunos não aparece.
+     *
+     * @param id ID da turma
+     * @return lista de matrículas ativas da turma
+     */
+    @Operation(summary = "Listar alunos matriculados na turma")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
+    @GetMapping("/{id}/alunos")
+    public ResponseEntity<ApiResponse<List<AlunoTurmaDTO>>> listarAlunos(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                alunoTurmaService.buscarAlunosPorTurma(id).stream().map(AlunoTurmaDTO::new).toList()
+        ));
+    }
+
+    /**
+     * Matricula um aluno na turma.
+     *
+     * Aplica regra de negócio: um aluno não pode ter duas matrículas ativas
+     * na mesma turma simultaneamente (retorna HTTP 422 se ocorrer).
+     *
+     * @param id  ID da turma
+     * @param dto DTO com idAluno e obs (observação opcional)
+     * @return matrícula criada
+     */
+    @Operation(summary = "Matricular aluno na turma (com validação de duplicidade)")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
+    @PostMapping("/{id}/alunos")
+    public ResponseEntity<ApiResponse<AlunoTurmaDTO>> matricular(
+            @PathVariable Long id,
+            @RequestBody AlunoTurmaDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(
+                new AlunoTurmaDTO(alunoTurmaService.matricular(dto.getIdAluno(), id, dto.getObs())),
+                "Aluno matriculado com sucesso"
+        ));
     }
 }
