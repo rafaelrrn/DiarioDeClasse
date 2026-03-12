@@ -9,6 +9,7 @@ import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,9 +23,11 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-
 @Configuration
 @EnableWebSecurity
+// @EnableMethodSecurity ativa o processamento de @PreAuthorize em cada método dos controllers.
+// Sem esta anotação, as regras @PreAuthorize são ignoradas silenciosamente pelo Spring.
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtFilter;
@@ -33,13 +36,17 @@ public class SecurityConfig {
         this.jwtFilter = jwtFilter;
     }
 
+    /**
+     * Hierarquia de roles: cada nível herda as permissões de todos os níveis abaixo.
+     *
+     * Exemplo: um ADMINISTRADOR pode acessar qualquer endpoint marcado com
+     * @PreAuthorize("hasRole('PROFESSOR')") sem precisar listar todos os roles.
+     *
+     * Hierarquia completa: ADMINISTRADOR > DIRETOR > COORDENADOR > PROFESSOR > RESPONSAVEL > ALUNO
+     */
     @Bean
     public RoleHierarchy roleHierarchy() {
         RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();
-
-        // Definindo a hierarquia:
-        // ADMINISTRADOR > PROFESSOR > RESPONSAVEL > ALUNO
-        // (significa que ADMINISTRADOR tem todas as permissões de PROFESSOR, RESPONSAVEL e ALUNO)
         roleHierarchy.setHierarchy("""
             ROLE_ADMINISTRADOR > ROLE_DIRETOR
             ROLE_DIRETOR > ROLE_COORDENADOR
@@ -47,24 +54,37 @@ public class SecurityConfig {
             ROLE_PROFESSOR > ROLE_RESPONSAVEL
             ROLE_RESPONSAVEL > ROLE_ALUNO
         """);
-
         return roleHierarchy;
     }
 
+    /**
+     * Cadeia de filtros de segurança.
+     *
+     * Estratégia: filterChain trata apenas autenticação (quem pode entrar).
+     * A autorização por role (o que pode fazer) fica nos controllers via @PreAuthorize,
+     * tornando a segurança visível e auditável diretamente no código de cada endpoint.
+     */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, RoleHierarchy roleHierarchy) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> {})
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Preflight CORS — deve sempre ser permitido
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
-                        .requestMatchers("/professor/**").hasRole("PROFESSOR")
-                        .requestMatchers(HttpMethod.GET, "/aluno/**").hasRole("ALUNO")
-                        .requestMatchers("/responsavel/**").hasRole("RESPONSAVEL")
+                        // Rotas de autenticação — públicas (login, registro, logout)
+                        .requestMatchers("/v1/auth/**").permitAll()
+                        // Swagger UI / OpenAPI — públicos em dev
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+                        // Actuator — público em dev (health, info)
+                        .requestMatchers("/actuator/**").permitAll()
+                        // Todas as demais rotas exigem autenticação.
+                        // A autorização por role é definida via @PreAuthorize em cada controller.
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -75,7 +95,6 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
         config.setAllowedOrigins(List.of("http://localhost:3000"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
@@ -83,10 +102,8 @@ public class SecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
-
         return source;
     }
-
 
     @Bean
     public PasswordEncoder passwordEncoder() {
