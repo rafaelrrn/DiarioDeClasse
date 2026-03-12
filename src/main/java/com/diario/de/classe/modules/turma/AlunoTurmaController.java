@@ -4,7 +4,6 @@ import com.diario.de.classe.modules.turma.dto.AlunoTurmaDTO;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,51 +13,63 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/v1/alunos-turma")
-@Tag(name = "AlunoTurma", description = "Gerenciamento de alunos por turma")
+@Tag(name = "AlunoTurma", description = "Consulta e gestão de matrículas individuais. Para matricular via turma, use POST /v1/turmas/{id}/alunos")
 public class AlunoTurmaController {
 
     private final AlunoTurmaService service;
 
     public AlunoTurmaController(AlunoTurmaService service) { this.service = service; }
 
-    @Operation(summary = "Listar todos os alunos por turma")
+    /**
+     * Lista todas as matrículas ativas do sistema.
+     * Registros desativados via soft delete não aparecem.
+     */
+    @Operation(summary = "Listar todas as matrículas ativas")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<AlunoTurmaDTO>>> listar() {
         return ResponseEntity.ok(ApiResponse.ok(service.buscarTodos().stream().map(AlunoTurmaDTO::new).toList()));
     }
 
-    @Operation(summary = "Buscar aluno-turma por ID")
+    /**
+     * Busca uma matrícula específica pelo ID.
+     */
+    @Operation(summary = "Buscar matrícula por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AlunoTurmaDTO>> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.ok(new AlunoTurmaDTO(service.buscarPorId(id))));
     }
 
-    @Operation(summary = "Adicionar aluno à turma")
+    /**
+     * Matricula um aluno em uma turma.
+     *
+     * Aplica regra de negócio: aluno não pode estar matriculado na mesma turma
+     * duas vezes simultaneamente (lança HTTP 422 se ocorrer).
+     *
+     * Alternativa orientada a recursos: POST /v1/turmas/{id}/alunos.
+     */
+    @Operation(summary = "Matricular aluno em turma (com validação de duplicidade)")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @PostMapping
-    public ResponseEntity<ApiResponse<AlunoTurmaDTO>> criar(@RequestBody AlunoTurmaDTO dto) {
-        AlunoTurma entity = new AlunoTurma();
-        entity.setObs(dto.getObs());
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(new AlunoTurmaDTO(service.criar(entity, dto.getIdAluno(), dto.getIdTurma())), "Aluno adicionado à turma com sucesso"));
+    public ResponseEntity<ApiResponse<AlunoTurmaDTO>> matricular(@RequestBody AlunoTurmaDTO dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(
+                new AlunoTurmaDTO(service.matricular(dto.getIdAluno(), dto.getIdTurma(), dto.getObs())),
+                "Aluno matriculado com sucesso"
+        ));
     }
 
-    @Operation(summary = "Atualizar aluno-turma")
-    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<AlunoTurmaDTO>> atualizar(@PathVariable Long id, @RequestBody AlunoTurmaDTO dto) {
-        AlunoTurma dados = new AlunoTurma();
-        BeanUtils.copyProperties(dto, dados, "idAlunoTurma");
-        return ResponseEntity.ok(ApiResponse.ok(new AlunoTurmaDTO(service.atualizar(id, dados, dto.getIdAluno(), dto.getIdTurma()))));
-    }
-
-    @Operation(summary = "Remover aluno da turma")
+    /**
+     * Desativa uma matrícula (soft delete).
+     *
+     * O registro permanece no banco com ativo=false para manter o histórico pedagógico.
+     * Após desativar, o aluno pode ser rematriculado na mesma turma.
+     */
+    @Operation(summary = "Desativar matrícula (soft delete)")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deletar(@PathVariable Long id) {
-        service.deletar(id);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Excluído com sucesso"));
+    public ResponseEntity<ApiResponse<Void>> desativar(@PathVariable Long id) {
+        service.desativar(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Matrícula desativada com sucesso"));
     }
 }
