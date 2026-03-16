@@ -4,6 +4,7 @@ import com.diario.de.classe.modules.turma.dto.AlunoTurmaDTO;
 import com.diario.de.classe.modules.turma.dto.TurmaDTO;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpStatus;
@@ -98,6 +99,12 @@ public class TurmaController {
      * @return matrícula criada
      */
     @Operation(summary = "Matricular aluno na turma (com validação de duplicidade)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Aluno matriculado com sucesso"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Turma ou aluno não encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "Aluno já possui matrícula ativa nesta turma"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ADMINISTRADOR ou COORDENADOR)")
+    })
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @PostMapping("/{id}/alunos")
     public ResponseEntity<ApiResponse<AlunoTurmaDTO>> matricular(

@@ -4,6 +4,7 @@ import com.diario.de.classe.modules.avaliacao.dto.AlunoAvaliacaoDTO;
 import com.diario.de.classe.modules.avaliacao.dto.BoletimResponseDTO;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -45,6 +46,10 @@ public class AlunoNotasController {
             description = "Retorna todas as notas ativas registradas para o aluno. " +
                           "Para médias e situação por disciplina, use GET /v1/alunos/{id}/boletim."
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Lista de notas retornada com sucesso"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Aluno não encontrado")
+    })
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL')")
     @GetMapping("/{id}/notas")
     public ResponseEntity<ApiResponse<List<AlunoAvaliacaoDTO>>> listarNotas(@PathVariable Long id) {
@@ -76,6 +81,10 @@ public class AlunoNotasController {
                     - Situação: APROVADO, EM_RECUPERACAO, REPROVADO_NOTA ou REPROVADO_FREQUENCIA
                     """
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Boletim gerado com sucesso"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Aluno não encontrado")
+    })
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR', 'ALUNO', 'RESPONSAVEL')")
     @GetMapping("/{id}/boletim")
     public ResponseEntity<ApiResponse<BoletimResponseDTO>> boletim(@PathVariable Long id) {
