@@ -4,6 +4,7 @@ import com.diario.de.classe.modules.frequencia.dto.AlunoFrequenciaDTO;
 import com.diario.de.classe.modules.frequencia.dto.FrequenciaResumoDTO;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -150,6 +151,12 @@ public class AlunoFrequenciaController {
      * @return lista de registros criados neste lançamento
      */
     @Operation(summary = "Lançar frequência em lote para toda a turma")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Frequência lançada com sucesso"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Turma ou calendário não encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "Nenhum aluno matriculado na turma"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ADMINISTRADOR ou PROFESSOR)")
+    })
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'PROFESSOR')")
     @PostMapping("/turma/{idTurma}/calendario/{idCalendario}")
     public ResponseEntity<ApiResponse<List<AlunoFrequenciaDTO>>> registrarTurma(

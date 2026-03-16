@@ -5,6 +5,7 @@ import com.diario.de.classe.modules.avaliacao.dto.AvaliacaoDTO;
 import com.diario.de.classe.modules.avaliacao.dto.NotaLancamentoDTO;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -130,9 +131,14 @@ public class AvaliacaoController {
             description = """
                     Registra a nota de múltiplos alunos para uma mesma avaliação em uma única requisição.
                     A operação é transacional: qualquer erro cancela todos os lançamentos.
-                    Retorna HTTP 422 se algum aluno já tiver nota ativa nesta avaliação.
                     """
     )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "Notas lançadas com sucesso"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Avaliação ou aluno não encontrado"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "422", description = "Algum aluno já possui nota ativa nesta avaliação"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Perfil sem permissão (requer ADMINISTRADOR ou PROFESSOR)")
+    })
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'PROFESSOR')")
     @PostMapping("/{id}/notas")
     public ResponseEntity<ApiResponse<List<AlunoAvaliacaoDTO>>> lancarNotas(
