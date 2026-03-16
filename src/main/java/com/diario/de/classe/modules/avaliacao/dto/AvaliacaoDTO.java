@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.util.Date;
 
 @Data
 public class AvaliacaoDTO implements Serializable {
@@ -25,6 +24,9 @@ public class AvaliacaoDTO implements Serializable {
     @Size(max = 255)
     private String dia;
 
+    /** Peso da avaliação para cálculo de média ponderada (ex: prova=7, trabalho=3). */
+    private Integer peso;
+
     public AvaliacaoDTO() {}
 
     public AvaliacaoDTO(Avaliacao entity) {
@@ -34,6 +36,7 @@ public class AvaliacaoDTO implements Serializable {
             this.idCalendarioEscolar = entity.getCalendarioEscolar() != null ? entity.getCalendarioEscolar().getIdCalendarioEscolar() : null;
             this.materia = entity.getMateria();
             this.dia = entity.getDia();
+            this.peso = entity.getPeso();
         }
     }
 }
