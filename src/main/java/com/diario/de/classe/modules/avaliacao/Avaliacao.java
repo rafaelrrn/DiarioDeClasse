@@ -33,4 +33,12 @@ public class Avaliacao extends BaseEntity {
 
     @Column(name = "dia")
     private String dia;
+
+    /**
+     * Peso da avaliação para cálculo de média ponderada.
+     * Exemplo: prova = 7, trabalho = 3 (soma = 10 → média em escala 0-10).
+     * Quando nulo, assume peso 1 (todas as avaliações têm o mesmo valor).
+     */
+    @Column(name = "peso")
+    private Integer peso;
 }
