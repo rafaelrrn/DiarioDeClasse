@@ -1,5 +1,6 @@
 package com.diario.de.classe.modules.auth;
 
+import com.diario.de.classe.modules.auth.dto.RegisterRequest;
 import com.diario.de.classe.modules.auth.dto.UserMeResponse;
 import com.diario.de.classe.shared.dto.ApiResponse;
 import com.diario.de.classe.shared.security.JwtService;
@@ -31,32 +32,32 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final UserService userService;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                          JwtService jwtService, UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.userService = userService;
     }
 
     /**
-     * Registra um novo usuário, codificando a senha antes de persistir.
+     * Registra um novo usuário, opcionalmente vinculado a uma Pessoa existente.
      *
-     * <p>A entidade {@code User} não é exposta na resposta para evitar
-     * vazamento de dados sensíveis.
-     *
-     * @param user dados do usuário (nome, email, senha, role)
-     * @return confirmação de registro
+     * @param request dados do usuário (nome, email, senha, role, idPessoa opcional)
+     * @return dados do usuário criado
      */
     @Operation(
             summary = "Registrar novo usuário",
             description = "Cria um novo usuário no sistema. A senha é armazenada com BCrypt. " +
-                          "Não retorna o usuário criado para evitar exposição de dados sensíveis."
+                          "idPessoa é opcional: informe para vincular o usuário a um registro pedagógico existente " +
+                          "(professor, aluno, responsável)."
     )
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<Void>> register(@RequestBody User user) {
-        user.setSenha(passwordEncoder.encode(user.getSenha()));
-        userRepository.save(user);
-        return ResponseEntity.ok(ApiResponse.ok(null, "Usuário registrado com sucesso"));
+    public ResponseEntity<ApiResponse<UserMeResponse>> register(@RequestBody RegisterRequest request) {
+        UserMeResponse created = userService.registrar(request);
+        return ResponseEntity.ok(ApiResponse.ok(created, "Usuário registrado com sucesso"));
     }
 
     /**
@@ -165,8 +166,9 @@ public class AuthController {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
+        Long idPessoa = user.getPessoa() != null ? user.getPessoa().getIdPessoa() : null;
         return ResponseEntity.ok(ApiResponse.ok(
-                new UserMeResponse(user.getIdUsers(), user.getEmail(), user.getNome(), user.getRole())
+                new UserMeResponse(user.getIdUsers(), user.getEmail(), user.getNome(), user.getRole(), idPessoa)
         ));
     }
 }

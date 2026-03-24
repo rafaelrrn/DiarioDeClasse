@@ -59,6 +59,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Erro interno do servidor. Tente novamente mais tarde."));
+                .body(ApiResponse.error(ex.getMessage()));
     }
 }

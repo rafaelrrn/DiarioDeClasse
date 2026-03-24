@@ -1,5 +1,6 @@
 package com.diario.de.classe.modules.auth;
 
+import com.diario.de.classe.modules.pessoa.Pessoa;
 import com.diario.de.classe.shared.BaseEntity;
 import com.diario.de.classe.shared.security.Role;
 import jakarta.persistence.*;
@@ -12,6 +13,10 @@ import lombok.ToString;
  *
  * Separada de Pessoa para isolar a autenticação do domínio pedagógico.
  * O campo 'role' determina o nível de acesso conforme o enum Role.
+ *
+ * O vínculo com Pessoa é opcional: administradores técnicos podem existir
+ * sem uma Pessoa correspondente. Para professores, alunos e responsáveis,
+ * o idPessoa permite que o sistema identifique o registro pedagógico do usuário.
  *
  * Soft delete: usuários desativados mantêm o histórico de ações no sistema
  * (herdado de BaseEntity).
@@ -40,4 +45,13 @@ public class User extends BaseEntity {
     /** Perfil de acesso — define as permissões via @PreAuthorize */
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    /**
+     * Pessoa do domínio pedagógico vinculada a este usuário (opcional).
+     * Nulo para administradores técnicos sem registro pedagógico.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_pessoa", nullable = true,
+            foreignKey = @ForeignKey(name = "fk_users_pessoa"))
+    private Pessoa pessoa;
 }
