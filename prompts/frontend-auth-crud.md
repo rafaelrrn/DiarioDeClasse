@@ -1,11 +1,11 @@
-# Prompt — Frontend: Domínio Auth (Login, Logout, Registro, Perfil)
+# Prompt — Frontend: Domínio Auth + Gerenciamento de Usuários
 
 ## Contexto
 
 Este projeto usa **Next.js 14 App Router** com **Tailwind CSS + shadcn/ui**, seguindo as convenções do `INSTRUCTIONS_FRONTEND.md`.
 O backend é Spring Boot com autenticação baseada em **cookie HttpOnly** chamado `auth_token`.
 
-Implemente o domínio de autenticação conforme descrito abaixo. Leia o `INSTRUCTIONS_FRONTEND.md` antes de começar.
+Implemente o domínio de autenticação e gerenciamento de usuários conforme descrito abaixo. Leia o `INSTRUCTIONS_FRONTEND.md` antes de começar.
 
 ---
 
@@ -13,34 +13,67 @@ Implemente o domínio de autenticação conforme descrito abaixo. Leia o `INSTRU
 
 ### Endpoints disponíveis
 
-| Método | Rota              | Auth | Descrição                                           |
-|--------|-------------------|------|-----------------------------------------------------|
-| POST   | /v1/auth/register | Não  | Cria novo usuário (nome, email, senha, role)        |
-| POST   | /v1/auth/login    | Não  | Autentica e define cookie `auth_token` (HttpOnly)   |
-| POST   | /v1/auth/logout   | Não  | Zera o cookie (maxAge=0); token não é invalidado    |
-| GET    | /v1/auth/me       | Sim  | Retorna dados do usuário autenticado via cookie     |
+#### Auth (`/v1/auth`) — rotas públicas
+
+| Método | Rota              | Auth | Descrição                                                    |
+|--------|-------------------|------|--------------------------------------------------------------|
+| POST   | /v1/auth/register | Não  | Cria novo usuário (nome, email, senha, role, idPessoa?)      |
+| POST   | /v1/auth/login    | Não  | Autentica e define cookie `auth_token` (HttpOnly)            |
+| POST   | /v1/auth/logout   | Não  | Zera o cookie (maxAge=0); token não é invalidado no servidor |
+| GET    | /v1/auth/me       | Sim  | Retorna dados do usuário autenticado via cookie              |
+
+#### Users (`/v1/users`) — apenas ADMINISTRADOR
+
+| Método | Rota            | Descrição                                                      |
+|--------|-----------------|----------------------------------------------------------------|
+| GET    | /v1/users       | Lista todos os usuários                                        |
+| GET    | /v1/users/{id}  | Busca usuário por ID                                           |
+| PUT    | /v1/users/{id}  | Atualiza nome, email, role, senha (opcional) e vínculo Pessoa  |
 
 ### DTOs relevantes
 
-**Login request** (body direto — não há LoginRequest DTO):
+**RegisterRequest** — `POST /v1/auth/register`:
+```json
+{
+  "nome": "Rafael",
+  "email": "rafael@escola.com",
+  "senha": "senha123",
+  "role": "PROFESSOR",
+  "idPessoa": 7
+}
+```
+> `idPessoa` é **opcional** (pode ser omitido ou `null`). Obrigatório para Professor, Aluno e Responsável; dispensável para administradores técnicos.
+
+**Login request** — `POST /v1/auth/login`:
 ```json
 { "email": "usuario@escola.com", "senha": "minhasenha" }
 ```
 
-**Register request** (body direto — entidade User):
-```json
-{ "nome": "Rafael", "email": "rafael@escola.com", "senha": "senha123", "role": "ADMINISTRADOR" }
-```
-
-**UserMeResponse** (retorno de `GET /auth/me`):
+**UserMeResponse** — retorno de `GET /auth/me` e de todos os endpoints de `/v1/users`:
 ```json
 {
   "idUser": 1,
   "email": "rafael@escola.com",
   "nome": "Rafael",
-  "role": "ADMINISTRADOR"
+  "role": "PROFESSOR",
+  "idPessoa": 7
 }
 ```
+> `idPessoa` é `null` para usuários sem vínculo pedagógico.
+
+**UserUpdateRequest** — `PUT /v1/users/{id}`:
+```json
+{
+  "nome": "Rafael Atualizado",
+  "email": "rafael@escola.com",
+  "senha": "",
+  "role": "COORDENADOR",
+  "idPessoa": 12
+}
+```
+> Se `senha` for vazia ou `null`, a senha atual é **mantida**.
+> Para **desvincular** Pessoa, enviar `"idPessoa": null`.
+> Para **vincular**, enviar o ID da Pessoa desejada.
 
 **Role enum** (todos os valores possíveis):
 ```
@@ -51,25 +84,14 @@ ADMINISTRADOR | DIRETOR | COORDENADOR | PROFESSOR | RESPONSAVEL | ALUNO
 ```
 ADMINISTRADOR > DIRETOR > COORDENADOR > PROFESSOR > RESPONSAVEL > ALUNO
 ```
-O backend usa essa hierarquia no `@PreAuthorize`. O frontend usa `useRoles()` para gating de UI.
 
 ### Comportamento crítico do cookie
 
 - **Cookie**: `auth_token` — HttpOnly, path `/`, maxAge=86400 (1 dia no cookie)
 - **Token JWT**: expira em **1 hora** (independente do cookie durar 1 dia)
-- Após 1 hora o cookie ainda existe, mas o token dentro dele está expirado → o backend retornará **401**
-- **Não há refresh token** — ao receber 401, redirecionar para `/login`
+- Após 1 hora, o backend retorna **401** — redirecionar para `/login`
+- **Não há refresh token** — o usuário deve fazer login novamente
 - Axios **deve** usar `withCredentials: true` para enviar o cookie automaticamente
-
-### CORS (dev)
-Backend permite apenas `http://localhost:3000` com `allowCredentials: true`.
-
-### Limitações da API
-- **Não existe** `GET /v1/auth/users` para listar usuários
-- **Não existe** `PUT /v1/auth/users/{id}` para editar usuários
-- **Não existe** `DELETE /v1/auth/users/{id}`
-- Registro é a única forma de criar usuários — sem restrição de role na rota (`/v1/auth/register` é pública)
-- Na prática: o frontend deve restringir o formulário de registro à UI de admin
 
 ---
 
@@ -97,11 +119,11 @@ api.interceptors.response.use(
 );
 ```
 
-> **Nota**: coloque o interceptor de redirect apenas no lado do cliente. No servidor (Server Components), o redirect é feito via middleware do Next.js.
-
 ---
 
 ### 2. Store de autenticação (`store/authStore.ts`)
+
+Incluir `idPessoa` para que o frontend saiba qual Pessoa corresponde ao usuário logado (útil para carregar o boletim, frequência etc. do próprio usuário).
 
 ```typescript
 import { create } from 'zustand';
@@ -111,6 +133,7 @@ interface AuthUser {
   email: string;
   nome: string;
   role: string;
+  idPessoa: number | null; // null = sem vínculo pedagógico
 }
 
 interface AuthStore {
@@ -139,14 +162,9 @@ export function useRoles() {
   const role = useAuthStore((s) => s.user?.role ?? '');
 
   const is = (target: string) => role === target;
-
   const hasAny = (...roles: string[]) => roles.includes(role);
-
-  // true se o usuário tem nível >= target (hierarquia)
   const atLeast = (target: string) => {
-    const userIdx = HIERARCHY.indexOf(role);
-    const targetIdx = HIERARCHY.indexOf(target);
-    return userIdx >= targetIdx;
+    return HIERARCHY.indexOf(role) >= HIERARCHY.indexOf(target);
   };
 
   return { role, is, hasAny, atLeast };
@@ -160,7 +178,7 @@ export function useRoles() {
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register'];
+const PUBLIC_PATHS = ['/login'];
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth_token');
@@ -185,8 +203,6 @@ export const config = {
 
 ### 5. Inicialização do usuário (`providers/AuthProvider.tsx`)
 
-Componente Client que roda `GET /auth/me` uma vez ao carregar o app e popula o Zustand store.
-
 ```typescript
 'use client';
 import { useEffect } from 'react';
@@ -199,28 +215,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     api.get('/v1/auth/me')
       .then((res) => setUser(res.data.data))
-      .catch(() => {/* middleware já redireciona se 401 */});
+      .catch(() => {/* middleware redireciona se 401 */});
   }, []);
 
   return <>{children}</>;
 }
 ```
 
-Adicione `<AuthProvider>` no `app/layout.tsx` (fora do `(auth)` route group).
+Adicione `<AuthProvider>` no `app/layout.tsx`.
 
 ---
 
 ### 6. Página de Login (`app/(auth)/login/page.tsx`)
 
 **Comportamento:**
-- Campos: `email` (Input type="email") + `senha` (Input type="password")
-- Submit: `POST /v1/auth/login`
-- Sucesso: backend define o cookie automaticamente → chamar `GET /auth/me` → popular store → `router.push('/dashboard')`
-- Erro: exibir mensagem da resposta (`error` ou `message` do `ApiResponse`)
-- Layout: centrado na tela, Card com logo/título da escola
-- Sem botão de registro visível (o registro é feito pelo admin)
+- Campos: `email` + `senha`
+- Submit: `POST /v1/auth/login` → `GET /auth/me` → popular store → `router.push('/dashboard')`
+- Erro: exibir `error` ou `message` da `ApiResponse`
+- Layout: Card centralizado com logo/título da escola
 
-**Validação Zod:**
 ```typescript
 const schema = z.object({
   email: z.string().email('E-mail inválido'),
@@ -228,21 +241,10 @@ const schema = z.object({
 });
 ```
 
-**Fluxo após login:**
-```typescript
-await api.post('/v1/auth/login', data);
-const me = await api.get('/v1/auth/me');
-setUser(me.data.data);
-router.push('/dashboard');
-```
-
 ---
 
-### 7. Logout
+### 7. Logout (no header/sidebar do dashboard)
 
-**Onde colocar:** botão no sidebar/header do layout do dashboard.
-
-**Fluxo:**
 ```typescript
 await api.post('/v1/auth/logout');
 clear(); // limpa Zustand
@@ -253,95 +255,131 @@ Usar `AlertDialog` do shadcn para confirmar antes de deslogar.
 
 ---
 
-### 8. Página de Registro (Admin) (`app/(dashboard)/admin/usuarios/novo/page.tsx`)
+### 8. Página de listagem de usuários (`app/(dashboard)/admin/usuarios/page.tsx`)
 
 > **Acesso restrito**: apenas ADMINISTRADOR.
 
-Como não existe endpoint de listagem, implemente apenas o formulário de criação.
-Use um `Card` simples com os campos:
+Exibe `GET /v1/users` em uma `Table` do shadcn com as colunas:
 
-| Campo | Tipo | Validação |
-|-------|------|-----------|
-| nome  | Input text | obrigatório |
-| email | Input email | obrigatório, formato e-mail |
-| senha | Input password | mín. 6 caracteres |
-| role  | Select | obrigatório, valores do enum Role |
+| Coluna       | Dado                                    |
+|--------------|-----------------------------------------|
+| Nome         | `nome`                                  |
+| E-mail       | `email`                                 |
+| Role         | `RoleBadge` (componente com cor)        |
+| Pessoa       | `idPessoa` — exibir "Vinculada" ou badge "Sem vínculo" em cinza |
+| Ações        | Botão "Editar" → `/admin/usuarios/{id}` |
 
-**Opções do Select de role** (exibir label amigável):
-```typescript
-const ROLE_OPTIONS = [
-  { value: 'ADMINISTRADOR', label: 'Administrador' },
-  { value: 'DIRETOR', label: 'Diretor' },
-  { value: 'COORDENADOR', label: 'Coordenador' },
-  { value: 'PROFESSOR', label: 'Professor' },
-  { value: 'RESPONSAVEL', label: 'Responsável' },
-  { value: 'ALUNO', label: 'Aluno' },
-];
-```
+Botão "Novo usuário" no topo → `/admin/usuarios/novo`.
 
-**Validação Zod:**
+**Query key TanStack Query**: `['users']`
+
+---
+
+### 9. Página de criação (`app/(dashboard)/admin/usuarios/novo/page.tsx`)
+
+Formulário com os campos:
+
+| Campo    | Tipo           | Validação                              |
+|----------|----------------|----------------------------------------|
+| nome     | Input text     | obrigatório                            |
+| email    | Input email    | obrigatório, formato e-mail            |
+| senha    | Input password | obrigatório, mín. 6 caracteres         |
+| role     | Select         | obrigatório                            |
+| idPessoa | Select         | opcional — carregado de `GET /v1/pessoas` |
+
+**Select de Pessoa:**
+- Carregar `GET /v1/pessoas` para preencher as opções
+- Exibir `nome` da Pessoa
+- Opção vazia "— Sem vínculo —" para deixar `null`
+- Usar `z.coerce.number().optional().nullable()` no Zod para o campo
+
 ```typescript
 const schema = z.object({
   nome: z.string().min(1, 'Nome obrigatório'),
   email: z.string().email('E-mail inválido'),
   senha: z.string().min(6, 'Mínimo 6 caracteres'),
   role: z.enum(['ADMINISTRADOR','DIRETOR','COORDENADOR','PROFESSOR','RESPONSAVEL','ALUNO']),
+  idPessoa: z.coerce.number().optional().nullable(),
 });
 ```
 
-Submit: `POST /v1/auth/register` → toast de sucesso → redirect para `/admin/usuarios`.
+Submit: `POST /v1/auth/register` → invalidar query `['users']` → toast de sucesso → `router.push('/admin/usuarios')`.
 
-**Guard no layout:**
+---
+
+### 10. Página de edição (`app/(dashboard)/admin/usuarios/[id]/page.tsx`)
+
+Carrega `GET /v1/users/{id}` e preenche o formulário.
+
+Campos iguais ao de criação, com as seguintes diferenças:
+- **Senha**: campo opcional — se vazio, a senha não é alterada. Exibir label `"Nova senha (deixe vazio para manter)"`.
+- **idPessoa**: exibe qual Pessoa está atualmente vinculada; permite trocar ou limpar (opção "— Remover vínculo —" que envia `null`).
+
 ```typescript
-// app/(dashboard)/admin/usuarios/layout.tsx
-import { cookies } from 'next/headers';
-// ou use useRoles() no client component
+const schema = z.object({
+  nome: z.string().min(1, 'Nome obrigatório'),
+  email: z.string().email('E-mail inválido'),
+  senha: z.string().optional().or(z.literal('')),
+  role: z.enum(['ADMINISTRADOR','DIRETOR','COORDENADOR','PROFESSOR','RESPONSAVEL','ALUNO']),
+  idPessoa: z.coerce.number().optional().nullable(),
+});
 ```
 
-No `page.tsx` (Client Component):
+Submit: `PUT /v1/users/{id}` → invalidar `['users']` e `['users', id]` → toast de sucesso.
+
+**Aviso de segurança** — exibir um `Alert` informativo quando o usuário editar a própria conta:
 ```typescript
-const { atLeast } = useRoles();
-if (!atLeast('ADMINISTRADOR')) return <p>Acesso negado.</p>;
+const { user } = useAuthStore();
+const isSelf = user?.idUser === Number(params.id);
+// se isSelf: mostrar Alert "Você está editando sua própria conta. Alterações de role têm efeito imediato."
 ```
 
 ---
 
-### 9. Página de Perfil (`app/(dashboard)/perfil/page.tsx`)
-
-Exibe os dados do usuário logado. **Somente leitura** (não há PUT /auth/me).
+### 11. `RoleBadge` — componente reutilizável
 
 ```typescript
-'use client';
-const { user } = useAuthStore();
+const ROLE_COLORS: Record<string, string> = {
+  ADMINISTRADOR: 'bg-red-100 text-red-800',
+  DIRETOR:       'bg-purple-100 text-purple-800',
+  COORDENADOR:   'bg-blue-100 text-blue-800',
+  PROFESSOR:     'bg-green-100 text-green-800',
+  RESPONSAVEL:   'bg-yellow-100 text-yellow-800',
+  ALUNO:         'bg-gray-100 text-gray-800',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMINISTRADOR: 'Administrador',
+  DIRETOR:       'Diretor',
+  COORDENADOR:   'Coordenador',
+  PROFESSOR:     'Professor',
+  RESPONSAVEL:   'Responsável',
+  ALUNO:         'Aluno',
+};
+
+export function RoleBadge({ role }: { role: string }) {
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[role] ?? 'bg-gray-100 text-gray-800'}`}>
+      {ROLE_LABELS[role] ?? role}
+    </span>
+  );
+}
 ```
+
+---
+
+### 12. Página de Perfil (`app/(dashboard)/perfil/page.tsx`)
+
+Exibe os dados do usuário logado via `useAuthStore()`. Somente leitura.
 
 Layout:
 ```
 Card
   Avatar com inicial do nome
-  nome (título)
-  email
-  Badge com role (mesmo estilo de RoleBadge)
-```
-
-**RoleBadge** — componente para exibir a role com cor:
-```typescript
-const ROLE_COLORS: Record<string, string> = {
-  ADMINISTRADOR: 'bg-red-100 text-red-800',
-  DIRETOR: 'bg-purple-100 text-purple-800',
-  COORDENADOR: 'bg-blue-100 text-blue-800',
-  PROFESSOR: 'bg-green-100 text-green-800',
-  RESPONSAVEL: 'bg-yellow-100 text-yellow-800',
-  ALUNO: 'bg-gray-100 text-gray-800',
-};
-
-export function RoleBadge({ role }: { role: string }) {
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${ROLE_COLORS[role] ?? ''}`}>
-      {role}
-    </span>
-  );
-}
+  nome (título h2)
+  email (texto secundário)
+  RoleBadge com a role
+  Se idPessoa não for null: link "Ver meu perfil pedagógico" → /pessoas/{idPessoa}
 ```
 
 ---
@@ -352,63 +390,72 @@ export function RoleBadge({ role }: { role: string }) {
 app/
   (auth)/
     login/
-      page.tsx          ← formulário de login
+      page.tsx                    ← formulário de login
   (dashboard)/
     admin/
       usuarios/
+        page.tsx                  ← listagem de usuários (ADMIN only)
         novo/
-          page.tsx      ← formulário de registro (ADMIN only)
+          page.tsx                ← formulário de criação
+        [id]/
+          page.tsx                ← formulário de edição + vínculo Pessoa
     perfil/
-      page.tsx          ← perfil do usuário logado
-middleware.ts           ← edge auth guard
+      page.tsx                    ← perfil do usuário logado
+middleware.ts                     ← edge auth guard
 lib/
-  axios.ts              ← instância Axios com withCredentials + interceptor 401
+  axios.ts                        ← Axios com withCredentials + interceptor 401
 store/
-  authStore.ts          ← Zustand: user autenticado
+  authStore.ts                    ← Zustand: user com idPessoa
 hooks/
-  useRoles.ts           ← is(), hasAny(), atLeast()
+  useRoles.ts                     ← is(), hasAny(), atLeast()
 providers/
-  AuthProvider.tsx      ← hidrata store com GET /auth/me no boot
+  AuthProvider.tsx                ← hidrata store com GET /auth/me no boot
+components/
+  RoleBadge.tsx                   ← badge com cor por role
 ```
 
 ---
 
 ## Comportamentos importantes
 
-### Token expira em 1 hora (não há refresh)
+### idPessoa no store habilita navegação contextual
 
-O cookie dura 1 dia, mas o JWT dentro dele expira em 1 hora. Quando isso acontece:
-- Qualquer chamada à API retorna 401
-- O interceptor do Axios redireciona para `/login`
-- O middleware do Next.js ainda vê o cookie (não expirado) mas o backend rejeita — portanto o interceptor é a linha de defesa
+Como `useAuthStore` agora expõe `idPessoa`, qualquer componente pode redirecionar o usuário logado para sua própria página pedagógica:
+```typescript
+const { user } = useAuthStore();
+if (user?.idPessoa) router.push(`/alunos/${user.idPessoa}/boletim`);
+```
+Use isso na página de perfil e no dashboard para criar atalhos personalizados por role.
 
-**Não** implemente lógica de refresh — o backend não oferece esse endpoint.
+### Senha vazia = sem alteração
+
+O backend verifica `senha != null && !senha.isBlank()`. Portanto, no `PUT /v1/users/{id}`, enviar `"senha": ""` ou omitir o campo mantém a senha atual. O frontend deve deixar o campo vazio por padrão na edição.
+
+### Desvincular Pessoa
+
+Enviar `"idPessoa": null` no `PUT /v1/users/{id}` remove o vínculo. A Pessoa **não é deletada** — apenas a FK é zerada em `users`.
+
+### E-mail duplicado retorna 422
+
+O backend lança `BusinessException` se o e-mail já existir. O interceptor do Axios captura o erro e o frontend deve exibir a mensagem da `ApiResponse.error`.
 
 ### Segurança no registro
 
-O endpoint `POST /v1/auth/register` é público no backend. Portanto:
-- Não exponha o link de registro em nenhum lugar público da UI
-- O acesso ao formulário `/admin/usuarios/novo` deve ser protegido por role no cliente
-
-### withCredentials é obrigatório
-
-Sem `withCredentials: true` no Axios, o browser não envia o cookie para o backend e todas as requisições autenticadas falham com 401. Configure globalmente na instância `api`, não por chamada.
-
-### Logout é stateless
-
-O backend não invalida o token no servidor — apenas zera o cookie no browser. Isso significa que se alguém capturar o token antes do logout, ele continuará válido até expirar (1 hora). É uma limitação do design atual — não implemente lógica de blacklist no frontend.
+`POST /v1/auth/register` é público no backend. Não exponha o link de registro em lugar algum da UI pública. O acesso ao formulário em `/admin/usuarios/novo` é protegido pelo guard de role no cliente.
 
 ---
 
 ## Checklist de implementação
 
-- [ ] `lib/axios.ts` — instância com `withCredentials: true` + interceptor 401
-- [ ] `store/authStore.ts` — Zustand com `user`, `setUser`, `clear`
+- [ ] `lib/axios.ts` — `withCredentials: true` + interceptor 401
+- [ ] `store/authStore.ts` — incluir campo `idPessoa: number | null`
 - [ ] `hooks/useRoles.ts` — `is()`, `hasAny()`, `atLeast()`
 - [ ] `providers/AuthProvider.tsx` — GET /auth/me no boot
 - [ ] `middleware.ts` — redireciona não-autenticado e autenticado em rota pública
+- [ ] `components/RoleBadge.tsx` — badge com cor e label amigável por role
 - [ ] `/login` — formulário com Zod, POST /auth/login, hidratação do store
 - [ ] Logout no header/sidebar — AlertDialog + POST /auth/logout + clear + redirect
-- [ ] `/admin/usuarios/novo` — formulário de registro com Select de role (ADMIN only)
-- [ ] `/perfil` — dados do usuário com RoleBadge
-- [ ] `RoleBadge` — componente reutilizável com cores por role
+- [ ] `/admin/usuarios` — Table com listagem, coluna de vínculo, botão "Novo"
+- [ ] `/admin/usuarios/novo` — formulário com Select de Pessoa opcional
+- [ ] `/admin/usuarios/[id]` — edição com senha opcional + vínculo Pessoa + alerta "editando própria conta"
+- [ ] `/perfil` — dados do usuário logado com link para perfil pedagógico se `idPessoa != null`

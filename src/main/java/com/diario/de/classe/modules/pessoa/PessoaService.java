@@ -38,7 +38,8 @@ public class PessoaService {
 
     public Pessoa atualizar(Long id, Pessoa dados, Long idTipoPessoa) {
         Pessoa existente = buscarPorId(id);
-        BeanUtils.copyProperties(dados, existente, "idPessoa", "createdAt", "tipoPessoa");
+        BeanUtils.copyProperties(dados, existente, "idPessoa", "createdAt", "tipoPessoa",
+                "alunoPerfil", "professorPerfil", "responsavelPerfil");
         if (idTipoPessoa != null) {
             TipoPessoa tipoPessoa = tipoPessoaRepository.findById(idTipoPessoa)
                     .orElseThrow(() -> new ResourceNotFoundException("TipoPessoa não encontrado com id: " + idTipoPessoa));
