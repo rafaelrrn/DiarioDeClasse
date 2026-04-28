@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.avaliacao;
 
 import com.diario.de.classe.modules.calendario.CalendarioEscolarRepository;
+import com.diario.de.classe.modules.cronograma.PeriodoLetivoRepository;
 import com.diario.de.classe.modules.turma.DisciplinaRepository;
 import com.diario.de.classe.shared.exception.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
@@ -12,9 +13,9 @@ import java.util.List;
 /**
  * Serviço responsável pelo gerenciamento de avaliações.
  *
- * <p>Uma avaliação define o instrumento de medição (prova, trabalho, etc.),
- * vinculado a uma disciplina e opcionalmente a um calendário escolar.
- * O campo {@code peso} determina o quanto essa avaliação vale na média ponderada.
+ * <p>Durante a transição (Etapa B → C), os campos {@code calendarioEscolar}
+ * e {@code periodoLetivo} coexistem. O vínculo com {@code calendarioEscolar}
+ * é mantido como nullable; o novo vínculo é {@code periodoLetivo}.
  */
 @Service
 public class AvaliacaoService {
@@ -22,47 +23,37 @@ public class AvaliacaoService {
     private final AvaliacaoRepository repository;
     private final DisciplinaRepository disciplinaRepository;
     private final CalendarioEscolarRepository calendarioEscolarRepository;
+    private final PeriodoLetivoRepository periodoLetivoRepository;
 
     public AvaliacaoService(AvaliacaoRepository repository,
                             DisciplinaRepository disciplinaRepository,
-                            CalendarioEscolarRepository calendarioEscolarRepository) {
-        this.repository = repository;
-        this.disciplinaRepository = disciplinaRepository;
+                            CalendarioEscolarRepository calendarioEscolarRepository,
+                            PeriodoLetivoRepository periodoLetivoRepository) {
+        this.repository                = repository;
+        this.disciplinaRepository      = disciplinaRepository;
         this.calendarioEscolarRepository = calendarioEscolarRepository;
+        this.periodoLetivoRepository   = periodoLetivoRepository;
     }
 
-    /**
-     * Lista todas as avaliações ativas (exclui soft-deleted).
-     *
-     * @return lista de avaliações ativas
-     */
     public List<Avaliacao> buscarTodos() {
         return repository.findAllAtivos();
     }
 
-    /**
-     * Busca uma avaliação pelo ID.
-     *
-     * @param id ID da avaliação
-     * @return entidade encontrada
-     * @throws ResourceNotFoundException se não existir
-     */
     public Avaliacao buscarPorId(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Avaliação não encontrada com id: " + id));
     }
 
     /**
-     * Cria uma nova avaliação vinculada a uma disciplina e opcionalmente a um calendário.
+     * Cria uma nova avaliação.
      *
-     * @param avaliacao           dados da avaliação (materia, dia, peso)
-     * @param idDisciplina        ID da disciplina obrigatória
-     * @param idCalendarioEscolar ID do calendário escolar (opcional)
-     * @return avaliação criada e persistida
-     * @throws ResourceNotFoundException se a disciplina ou calendário não forem encontrados
+     * @param avaliacao           dados básicos (materia, dia, peso, tipo — já setados pelo controller)
+     * @param idDisciplina        ID da disciplina (obrigatório)
+     * @param idCalendarioEscolar ID do calendário legado (opcional — transição)
+     * @param idPeriodoLetivo     ID do período letivo (opcional)
      */
     @Transactional
-    public Avaliacao criar(Avaliacao avaliacao, Long idDisciplina, Long idCalendarioEscolar) {
+    public Avaliacao criar(Avaliacao avaliacao, Long idDisciplina, Long idCalendarioEscolar, Long idPeriodoLetivo) {
         avaliacao.setDisciplina(disciplinaRepository.findById(idDisciplina)
                 .orElseThrow(() -> new ResourceNotFoundException("Disciplina não encontrada com id: " + idDisciplina)));
 
@@ -72,6 +63,12 @@ public class AvaliacaoService {
                             "Calendário escolar não encontrado com id: " + idCalendarioEscolar)));
         }
 
+        if (idPeriodoLetivo != null) {
+            avaliacao.setPeriodoLetivo(periodoLetivoRepository.findById(idPeriodoLetivo)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Período letivo não encontrado com id: " + idPeriodoLetivo)));
+        }
+
         return repository.save(avaliacao);
     }
 
@@ -79,17 +76,18 @@ public class AvaliacaoService {
      * Atualiza os dados de uma avaliação existente.
      *
      * @param id                  ID da avaliação a atualizar
-     * @param dados               novos dados (materia, dia, peso)
-     * @param idDisciplina        novo ID de disciplina (opcional — mantém a atual se nulo)
-     * @param idCalendarioEscolar novo ID de calendário (opcional — mantém o atual se nulo)
-     * @return avaliação atualizada
+     * @param dados               novos dados (materia, dia, peso, tipo — já setados pelo controller)
+     * @param idDisciplina        novo ID de disciplina (mantém atual se nulo)
+     * @param idCalendarioEscolar novo ID de calendário legado (mantém atual se nulo)
+     * @param idPeriodoLetivo     novo ID de período letivo (mantém atual se nulo)
      */
     @Transactional
-    public Avaliacao atualizar(Long id, Avaliacao dados, Long idDisciplina, Long idCalendarioEscolar) {
+    public Avaliacao atualizar(Long id, Avaliacao dados, Long idDisciplina, Long idCalendarioEscolar, Long idPeriodoLetivo) {
         Avaliacao existente = buscarPorId(id);
         existente.setMateria(dados.getMateria());
         existente.setDia(dados.getDia());
         existente.setPeso(dados.getPeso());
+        existente.setTipo(dados.getTipo());
 
         if (idDisciplina != null) {
             existente.setDisciplina(disciplinaRepository.findById(idDisciplina)
@@ -101,18 +99,15 @@ public class AvaliacaoService {
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "Calendário escolar não encontrado com id: " + idCalendarioEscolar)));
         }
+        if (idPeriodoLetivo != null) {
+            existente.setPeriodoLetivo(periodoLetivoRepository.findById(idPeriodoLetivo)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Período letivo não encontrado com id: " + idPeriodoLetivo)));
+        }
 
         return repository.save(existente);
     }
 
-    /**
-     * Desativa (soft delete) uma avaliação.
-     *
-     * <p>O registro permanece no banco para preservar o histórico pedagógico —
-     * as notas vinculadas a esta avaliação continuam acessíveis.
-     *
-     * @param id ID da avaliação a desativar
-     */
     @Transactional
     public void desativar(Long id) {
         Avaliacao avaliacao = buscarPorId(id);

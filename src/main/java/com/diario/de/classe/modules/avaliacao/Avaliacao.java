@@ -1,11 +1,14 @@
 package com.diario.de.classe.modules.avaliacao;
 
 import com.diario.de.classe.modules.calendario.CalendarioEscolar;
+import com.diario.de.classe.modules.cronograma.PeriodoLetivo;
 import com.diario.de.classe.modules.turma.Disciplina;
 import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "avaliacao")
@@ -28,11 +31,18 @@ public class Avaliacao extends BaseEntity {
             foreignKey = @ForeignKey(name = "fk_id_calendario_escolar"))
     private CalendarioEscolar calendarioEscolar;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_periodo_letivo")
+    private PeriodoLetivo periodoLetivo;
+
+    @Column(name = "tipo", nullable = false, length = 30)
+    private String tipo = "PROVA";
+
     @Column(name = "materia")
     private String materia;
 
     @Column(name = "dia")
-    private String dia;
+    private LocalDate dia;
 
     /**
      * Peso da avaliação para cálculo de média ponderada.

@@ -4,6 +4,7 @@ import com.diario.de.classe.modules.calendario.AnoCalendario;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import org.flywaydb.core.internal.util.JsonUtils;
 import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
@@ -17,7 +18,7 @@ public class AnoCalendarioDTO implements Serializable {
     @NotNull
     @Size(max = 4)
     private String ano;
-
+    
     public AnoCalendarioDTO() {}
 
     public AnoCalendarioDTO(AnoCalendario entity) {

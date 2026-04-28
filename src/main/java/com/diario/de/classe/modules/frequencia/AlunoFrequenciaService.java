@@ -1,6 +1,7 @@
 package com.diario.de.classe.modules.frequencia;
 
-import com.diario.de.classe.modules.calendario.CalendarioEscolarRepository;
+import com.diario.de.classe.modules.cronograma.Aula;
+import com.diario.de.classe.modules.cronograma.AulaRepository;
 import com.diario.de.classe.modules.frequencia.dto.FrequenciaResumoDTO;
 import com.diario.de.classe.modules.pessoa.PessoaRepository;
 import com.diario.de.classe.modules.turma.AlunoTurma;
@@ -23,22 +24,26 @@ import java.util.Map;
  *   <li>FALTA_JUSTIFICADA não conta para reprovação, mas a aula ainda ocorreu.</li>
  *   <li>Fórmula: {@code percentual = (totalPresencas / totalAulas) * 100}</li>
  * </ul>
+ *
+ * <p>A API recebe e retorna {@code tipoFrequencia} como String.
+ * Internamente o enum {@link TipoFrequencia} é usado para validação
+ * e para o método {@link TipoFrequencia#contaParaReprovacao()}.
  */
 @Service
 public class AlunoFrequenciaService {
 
     private final AlunoFrequenciaRepository repository;
     private final PessoaRepository pessoaRepository;
-    private final CalendarioEscolarRepository calendarioEscolarRepository;
+    private final AulaRepository aulaRepository;
     private final AlunoTurmaRepository alunoTurmaRepository;
 
     public AlunoFrequenciaService(AlunoFrequenciaRepository repository,
                                   PessoaRepository pessoaRepository,
-                                  CalendarioEscolarRepository calendarioEscolarRepository,
+                                  AulaRepository aulaRepository,
                                   AlunoTurmaRepository alunoTurmaRepository) {
-        this.repository = repository;
-        this.pessoaRepository = pessoaRepository;
-        this.calendarioEscolarRepository = calendarioEscolarRepository;
+        this.repository          = repository;
+        this.pessoaRepository    = pessoaRepository;
+        this.aulaRepository      = aulaRepository;
         this.alunoTurmaRepository = alunoTurmaRepository;
     }
 
@@ -46,35 +51,17 @@ public class AlunoFrequenciaService {
     // Consultas básicas
     // -------------------------------------------------------------------------
 
-    /**
-     * Lista todos os registros de frequência ativos (exclui soft-deleted).
-     *
-     * @return lista de frequências ativas
-     */
     public List<AlunoFrequencia> buscarTodos() {
-        return repository.findAllAtivos();
+        return repository.findAllByAtivoTrue();
     }
 
-    /**
-     * Busca um registro de frequência pelo ID.
-     *
-     * @param id ID do registro
-     * @return entidade encontrada
-     * @throws ResourceNotFoundException se não encontrado ou inativo
-     */
     public AlunoFrequencia buscarPorId(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Frequência não encontrada com id: " + id));
     }
 
-    /**
-     * Lista todas as frequências ativas de um aluno.
-     *
-     * @param idAluno ID da Pessoa com tipo ALUNO
-     * @return lista de frequências do aluno
-     */
     public List<AlunoFrequencia> buscarPorAluno(Long idAluno) {
-        return repository.findAtivosByAluno(idAluno);
+        return repository.findByAluno_IdPessoaAndAtivoTrue(idAluno);
     }
 
     // -------------------------------------------------------------------------
@@ -84,42 +71,35 @@ public class AlunoFrequenciaService {
     /**
      * Registra a frequência de um único aluno em uma aula.
      *
-     * <p>Valida:
-     * <ul>
-     *   <li>Existência do aluno e do calendário escolar.</li>
-     *   <li>Duplicidade: impede dois registros ativos para o mesmo aluno/aula.</li>
-     * </ul>
-     *
-     * @param idAluno             ID do aluno
-     * @param idCalendarioEscolar ID da aula (calendário escolar)
-     * @param tipo                tipo de frequência; se nulo, assume {@link TipoFrequencia#PRESENTE}
-     * @return registro de frequência criado
-     * @throws BusinessException se já existe frequência ativa para esse aluno nesta aula
+     * @param idAluno ID do aluno (Pessoa tipo ALUNO)
+     * @param idAula  ID da aula
+     * @param tipo    tipo como String: PRESENTE, FALTA ou FALTA_JUSTIFICADA; nulo assume PRESENTE
      */
     @Transactional
-    public AlunoFrequencia registrar(Long idAluno, Long idCalendarioEscolar, TipoFrequencia tipo) {
-        // Valida aluno
+    public AlunoFrequencia registrar(Long idAluno, Long idAula, String tipo) {
         var aluno = pessoaRepository.findById(idAluno)
                 .orElseThrow(() -> new ResourceNotFoundException("Aluno não encontrado com id: " + idAluno));
 
-        // Valida calendário
-        var calendario = calendarioEscolarRepository.findById(idCalendarioEscolar)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Calendário escolar não encontrado com id: " + idCalendarioEscolar));
+        Aula aula = aulaRepository.findById(idAula)
+                .orElseThrow(() -> new ResourceNotFoundException("Aula não encontrada com id: " + idAula));
 
-        // Impede lançamento duplicado para o mesmo aluno/aula
-        if (repository.existsByPessoaAlunoIdPessoaAndCalendarioEscolarIdCalendarioEscolarAndAtivoTrue(
-                idAluno, idCalendarioEscolar)) {
+        if (Boolean.TRUE.equals(aula.getChamadaEncerrada())) {
+            throw new BusinessException("A chamada desta aula já foi encerrada e não pode ser alterada.");
+        }
+
+        if (repository.findByAula_IdAulaAndAluno_IdPessoa(idAula, idAluno).isPresent()) {
             throw new BusinessException(
                     "Frequência já registrada para este aluno nesta aula. " +
                     "Use PUT /v1/frequencias/{id} para corrigir.");
         }
 
+        // Valida o valor do tipo antes de persistir; usa o enum apenas para validação e domínio
+        TipoFrequencia tipoEnum = TipoFrequencia.valueOf(tipo != null ? tipo : "PRESENTE");
+
         AlunoFrequencia frequencia = new AlunoFrequencia();
-        frequencia.setPessoaAluno(aluno);
-        frequencia.setCalendarioEscolar(calendario);
-        // Assume PRESENTE quando o tipo não for informado (lançamento padrão)
-        frequencia.setTipoFrequencia(tipo != null ? tipo : TipoFrequencia.PRESENTE);
+        frequencia.setAluno(aluno);
+        frequencia.setAula(aula);
+        frequencia.setTipoFrequencia(tipoEnum.name());
 
         return repository.save(frequencia);
     }
@@ -127,48 +107,43 @@ public class AlunoFrequenciaService {
     /**
      * Lança frequência em lote para todos os alunos matriculados em uma turma.
      *
-     * <p>Útil para o professor registrar a chamada de uma aula inteira de uma vez.
-     * Para cada aluno ativo da turma:
-     * <ul>
-     *   <li>Usa o tipo informado no mapa {@code tiposPorAluno} se existir.</li>
-     *   <li>Usa {@code tipoPadrao} para alunos não mapeados explicitamente.</li>
-     *   <li>Ignora alunos que já possuem frequência ativa para esta aula
-     *       (não lança exceção — apenas pula).</li>
-     * </ul>
-     *
-     * @param idTurma             ID da turma
-     * @param idCalendarioEscolar ID da aula (calendário escolar)
-     * @param tiposPorAluno       mapa opcional de {@code idAluno → TipoFrequencia}
-     * @param tipoPadrao          tipo usado quando o aluno não está no mapa; padrão: PRESENTE
-     * @return lista de registros criados neste lançamento
+     * @param idTurma       ID da turma
+     * @param idAula        ID da aula
+     * @param tiposPorAluno mapa opcional de idAluno → tipo como String
+     * @param tipoPadrao    tipo para alunos não mapeados (padrão: "PRESENTE")
      */
     @Transactional
     public List<AlunoFrequencia> registrarTurma(Long idTurma,
-                                                Long idCalendarioEscolar,
-                                                Map<Long, TipoFrequencia> tiposPorAluno,
-                                                TipoFrequencia tipoPadrao) {
-        // Valida o calendário escolar
-        var calendario = calendarioEscolarRepository.findById(idCalendarioEscolar)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Calendário escolar não encontrado com id: " + idCalendarioEscolar));
+                                                Long idAula,
+                                                Map<Long, String> tiposPorAluno,
+                                                String tipoPadrao) {
+        Aula aula = aulaRepository.findById(idAula)
+                .orElseThrow(() -> new ResourceNotFoundException("Aula não encontrada com id: " + idAula));
 
-        // Busca todos os alunos ativamente matriculados na turma
+        if (Boolean.TRUE.equals(aula.getChamadaEncerrada())) {
+            throw new BusinessException("A chamada desta aula já foi encerrada e não pode ser alterada.");
+        }
+
         List<AlunoTurma> matriculas = alunoTurmaRepository.findAtivosByTurmaId(idTurma);
         if (matriculas.isEmpty()) {
             throw new BusinessException("Nenhum aluno matriculado na turma com id: " + idTurma);
         }
 
-        TipoFrequencia padrao = tipoPadrao != null ? tipoPadrao : TipoFrequencia.PRESENTE;
-        Map<Long, TipoFrequencia> tipos = tiposPorAluno != null ? tiposPorAluno : Map.of();
+        // Valida e normaliza o tipo padrão
+        String padrao = TipoFrequencia.valueOf(tipoPadrao != null ? tipoPadrao : "PRESENTE").name();
+        Map<Long, String> tipos = tiposPorAluno != null ? tiposPorAluno : Map.of();
 
         return matriculas.stream()
-                .filter(m -> !repository.existsByPessoaAlunoIdPessoaAndCalendarioEscolarIdCalendarioEscolarAndAtivoTrue(
-                        m.getPessoaAluno().getIdPessoa(), idCalendarioEscolar))
+                .filter(m -> repository.findByAula_IdAulaAndAluno_IdPessoa(
+                        idAula, m.getPessoaAluno().getIdPessoa()).isEmpty())
                 .map(m -> {
+                    // Valida e normaliza o tipo de cada aluno
+                    String tipoAluno = TipoFrequencia.valueOf(
+                            tipos.getOrDefault(m.getPessoaAluno().getIdPessoa(), padrao)).name();
                     AlunoFrequencia f = new AlunoFrequencia();
-                    f.setPessoaAluno(m.getPessoaAluno());
-                    f.setCalendarioEscolar(calendario);
-                    f.setTipoFrequencia(tipos.getOrDefault(m.getPessoaAluno().getIdPessoa(), padrao));
+                    f.setAluno(m.getPessoaAluno());
+                    f.setAula(aula);
+                    f.setTipoFrequencia(tipoAluno);
                     return repository.save(f);
                 })
                 .toList();
@@ -177,27 +152,18 @@ public class AlunoFrequenciaService {
     /**
      * Atualiza o tipo de frequência de um registro existente.
      *
-     * <p>Permite ao professor corrigir um lançamento errado (ex: marcou FALTA, era PRESENTE).
-     *
-     * @param id   ID do registro de frequência
-     * @param tipo novo tipo de frequência
-     * @return registro atualizado
+     * @param id   ID do registro
+     * @param tipo novo tipo como String (PRESENTE, FALTA, FALTA_JUSTIFICADA)
      */
     @Transactional
-    public AlunoFrequencia atualizar(Long id, TipoFrequencia tipo) {
+    public AlunoFrequencia atualizar(Long id, String tipo) {
+        // Valida o valor via enum antes de persistir
+        TipoFrequencia.valueOf(tipo);
         AlunoFrequencia existente = buscarPorId(id);
         existente.setTipoFrequencia(tipo);
         return repository.save(existente);
     }
 
-    /**
-     * Desativa (soft delete) um registro de frequência.
-     *
-     * <p>O registro permanece no banco com {@code ativo = false} para preservar
-     * o histórico pedagógico. Após desativar, o lançamento pode ser refeito.
-     *
-     * @param id ID do registro a desativar
-     */
     @Transactional
     public void desativar(Long id) {
         AlunoFrequencia frequencia = buscarPorId(id);
@@ -213,27 +179,18 @@ public class AlunoFrequenciaService {
     /**
      * Calcula o resumo de frequência de um aluno com o percentual de presença.
      *
-     * <p>Fórmula (LDB Art. 24):
-     * {@code percentual = (totalPresencas / totalAulas) * 100}
-     *
-     * <p>Considera FALTA_JUSTIFICADA no denominador (aula ocorreu), mas
-     * não computa como falta para efeito de reprovação.
-     *
-     * @param idAluno ID do aluno
-     * @return DTO com contagens, percentual e indicador de risco (< 75%)
+     * <p>Fórmula (LDB Art. 24): {@code percentual = (totalPresencas / totalAulas) * 100}
      */
     public FrequenciaResumoDTO calcularFrequencia(Long idAluno) {
-        // Verifica existência do aluno
         if (!pessoaRepository.existsById(idAluno)) {
             throw new ResourceNotFoundException("Aluno não encontrado com id: " + idAluno);
         }
 
-        long totalAulas     = repository.countTotalAulasByAluno(idAluno);
-        long presencas      = repository.countByAlunoAndTipo(idAluno, TipoFrequencia.PRESENTE);
-        long faltas         = repository.countByAlunoAndTipo(idAluno, TipoFrequencia.FALTA);
-        long faltasJust     = repository.countByAlunoAndTipo(idAluno, TipoFrequencia.FALTA_JUSTIFICADA);
+        long totalAulas  = repository.countByAluno_IdPessoaAndAtivoTrue(idAluno);
+        long presencas   = repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(idAluno, TipoFrequencia.PRESENTE.name());
+        long faltas      = repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(idAluno, TipoFrequencia.FALTA.name());
+        long faltasJust  = repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(idAluno, TipoFrequencia.FALTA_JUSTIFICADA.name());
 
-        // Evita divisão por zero quando nenhuma aula foi registrada
         double percentual = totalAulas > 0
                 ? ((double) presencas / totalAulas) * 100.0
                 : 0.0;

@@ -1,25 +1,28 @@
 package com.diario.de.classe.modules.frequencia;
 
-import com.diario.de.classe.modules.calendario.CalendarioEscolar;
+// DEPRECATED — substituído na Etapa B da refatoração
+// O mapeamento anterior vinculava AlunoFrequencia a CalendarioEscolar (tabela legada).
+// A nova versão vincula diretamente à entidade Aula, com granularidade por aula/aluno.
+//
+// Mapeamento anterior (removido):
+//   @ManyToOne @JoinColumn(name = "id_calendario_escolar") private CalendarioEscolar calendarioEscolar;
+//   @ManyToOne @JoinColumn(name = "id_aluno") private Pessoa pessoaAluno;
+//   @Enumerated(EnumType.STRING) private TipoFrequencia tipoFrequencia;
+// -------------------------------------------------------------------------
+
+import com.diario.de.classe.modules.cronograma.Aula;
 import com.diario.de.classe.modules.pessoa.Pessoa;
 import com.diario.de.classe.shared.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
-/**
- * Registro de frequência de um aluno em uma aula específica.
- *
- * <p>Cada instância representa a ocorrência de <strong>um aluno</strong>
- * em <strong>uma entrada de calendário escolar</strong> (aula/dia letivo).
- * O tipo determina se o aluno estava presente, faltou ou tem justificativa.
- *
- * @see TipoFrequencia
- */
 @Entity
 @Table(name = "aluno_frequencia")
 @Data
-@EqualsAndHashCode(callSuper = true)
+@ToString(exclude = {"aula", "aluno"})
+@EqualsAndHashCode(callSuper = true, exclude = {"aula", "aluno"})
 public class AlunoFrequencia extends BaseEntity {
 
     @Id
@@ -27,23 +30,17 @@ public class AlunoFrequencia extends BaseEntity {
     @Column(name = "id_aluno_frequencia")
     private Long idAlunoFrequencia;
 
-    /** Aluno (Pessoa com tipo ALUNO) ao qual a frequência pertence. */
-    @ManyToOne
-    @JoinColumn(name = "id_aluno", nullable = false, referencedColumnName = "id_pessoa",
-            foreignKey = @ForeignKey(name = "fk_id_aluno"))
-    private Pessoa pessoaAluno;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_aula", nullable = false)
+    private Aula aula;
 
-    /** Calendário escolar (aula/dia) ao qual esta frequência se refere. */
-    @ManyToOne
-    @JoinColumn(name = "id_calendario_escolar", nullable = false, referencedColumnName = "id_calendario_escolar",
-            foreignKey = @ForeignKey(name = "fk_id_calendario_escolar"))
-    private CalendarioEscolar calendarioEscolar;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_aluno", nullable = false)
+    private Pessoa aluno;
 
-    /**
-     * Tipo da frequência: PRESENTE, FALTA ou FALTA_JUSTIFICADA.
-     * Armazenado como String (EnumType.STRING) para legibilidade no banco.
-     */
-    @Enumerated(EnumType.STRING)
     @Column(name = "tipo_frequencia", nullable = false, length = 30)
-    private TipoFrequencia tipoFrequencia = TipoFrequencia.PRESENTE;
+    private String tipoFrequencia = "PRESENTE";
+
+    @Column(name = "justificativa", length = 500)
+    private String justificativa;
 }

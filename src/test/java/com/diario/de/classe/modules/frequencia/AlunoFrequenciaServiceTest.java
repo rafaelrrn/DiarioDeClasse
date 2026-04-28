@@ -1,7 +1,7 @@
 package com.diario.de.classe.modules.frequencia;
 
-import com.diario.de.classe.modules.calendario.CalendarioEscolar;
-import com.diario.de.classe.modules.calendario.CalendarioEscolarRepository;
+import com.diario.de.classe.modules.cronograma.Aula;
+import com.diario.de.classe.modules.cronograma.AulaRepository;
 import com.diario.de.classe.modules.frequencia.dto.FrequenciaResumoDTO;
 import com.diario.de.classe.modules.pessoa.Pessoa;
 import com.diario.de.classe.modules.pessoa.PessoaRepository;
@@ -37,7 +37,7 @@ class AlunoFrequenciaServiceTest {
 
     @Mock private AlunoFrequenciaRepository repository;
     @Mock private PessoaRepository pessoaRepository;
-    @Mock private CalendarioEscolarRepository calendarioEscolarRepository;
+    @Mock private AulaRepository aulaRepository;
     @Mock private AlunoTurmaRepository alunoTurmaRepository;
 
     @InjectMocks
@@ -55,10 +55,10 @@ class AlunoFrequenciaServiceTest {
         @DisplayName("Deve calcular percentual correto: 8 presenças em 10 aulas = 80%")
         void deveCalcularPercentual_quandoHaRegistros() {
             when(pessoaRepository.existsById(1L)).thenReturn(true);
-            when(repository.countTotalAulasByAluno(1L)).thenReturn(10L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.PRESENTE)).thenReturn(8L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.FALTA)).thenReturn(2L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.FALTA_JUSTIFICADA)).thenReturn(0L);
+            when(repository.countByAluno_IdPessoaAndAtivoTrue(1L)).thenReturn(10L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "PRESENTE")).thenReturn(8L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "FALTA")).thenReturn(2L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "FALTA_JUSTIFICADA")).thenReturn(0L);
 
             FrequenciaResumoDTO resultado = service.calcularFrequencia(1L);
 
@@ -66,35 +66,31 @@ class AlunoFrequenciaServiceTest {
             assertThat(resultado.totalAulas()).isEqualTo(10L);
             assertThat(resultado.totalPresencas()).isEqualTo(8L);
             assertThat(resultado.totalFaltas()).isEqualTo(2L);
-            // 80% >= 75% — não está em risco
             assertThat(resultado.emRiscoReprovacao()).isFalse();
         }
 
         @Test
         @DisplayName("Deve retornar 0% e não em risco quando nenhuma aula foi registrada")
         void deveRetornarZero_quandoSemAulas() {
-            // Evita divisão por zero
             when(pessoaRepository.existsById(1L)).thenReturn(true);
-            when(repository.countTotalAulasByAluno(1L)).thenReturn(0L);
-            when(repository.countByAlunoAndTipo(any(), any())).thenReturn(0L);
+            when(repository.countByAluno_IdPessoaAndAtivoTrue(1L)).thenReturn(0L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(any(), any())).thenReturn(0L);
 
             FrequenciaResumoDTO resultado = service.calcularFrequencia(1L);
 
             assertThat(resultado.percentualPresenca()).isEqualTo(0.0);
             assertThat(resultado.totalAulas()).isEqualTo(0L);
-            // Sem aulas registradas, não há risco de reprovação ainda
             assertThat(resultado.emRiscoReprovacao()).isFalse();
         }
 
         @Test
         @DisplayName("Deve marcar emRisco=true quando percentual abaixo de 75% (LDB)")
         void deveMarcaEmRisco_quandoPercentualAbaixo75() {
-            // 7 presenças em 10 aulas = 70% < 75% → em risco
             when(pessoaRepository.existsById(1L)).thenReturn(true);
-            when(repository.countTotalAulasByAluno(1L)).thenReturn(10L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.PRESENTE)).thenReturn(7L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.FALTA)).thenReturn(3L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.FALTA_JUSTIFICADA)).thenReturn(0L);
+            when(repository.countByAluno_IdPessoaAndAtivoTrue(1L)).thenReturn(10L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "PRESENTE")).thenReturn(7L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "FALTA")).thenReturn(3L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "FALTA_JUSTIFICADA")).thenReturn(0L);
 
             FrequenciaResumoDTO resultado = service.calcularFrequencia(1L);
 
@@ -105,20 +101,16 @@ class AlunoFrequenciaServiceTest {
         @Test
         @DisplayName("Deve computar FALTA_JUSTIFICADA no total de aulas, sem contar como falta")
         void deveComputarFaltaJustificadaNoTotal_masNaoComoFalta() {
-            // 8 presenças + 1 falta + 1 falta justificada = 10 aulas
-            // FALTA_JUSTIFICADA NÃO conta como falta para reprovação, mas conta no denominador
-            // percentual = (8 / 10) * 100 = 80%
             when(pessoaRepository.existsById(1L)).thenReturn(true);
-            when(repository.countTotalAulasByAluno(1L)).thenReturn(10L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.PRESENTE)).thenReturn(8L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.FALTA)).thenReturn(1L);
-            when(repository.countByAlunoAndTipo(1L, TipoFrequencia.FALTA_JUSTIFICADA)).thenReturn(1L);
+            when(repository.countByAluno_IdPessoaAndAtivoTrue(1L)).thenReturn(10L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "PRESENTE")).thenReturn(8L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "FALTA")).thenReturn(1L);
+            when(repository.countByAluno_IdPessoaAndTipoFrequenciaAndAtivoTrue(1L, "FALTA_JUSTIFICADA")).thenReturn(1L);
 
             FrequenciaResumoDTO resultado = service.calcularFrequencia(1L);
 
             assertThat(resultado.percentualPresenca()).isEqualTo(80.0);
             assertThat(resultado.totalFaltasJust()).isEqualTo(1L);
-            // 80% >= 75% — falta justificada não gerou risco
             assertThat(resultado.emRiscoReprovacao()).isFalse();
         }
 
@@ -146,17 +138,17 @@ class AlunoFrequenciaServiceTest {
         void deveRegistrar_quandoDadosValidos() {
             Pessoa aluno = new Pessoa();
             aluno.setIdPessoa(1L);
-            CalendarioEscolar calendario = new CalendarioEscolar();
+            Aula aula = new Aula();
+            aula.setChamadaEncerrada(false);
 
             when(pessoaRepository.findById(1L)).thenReturn(Optional.of(aluno));
-            when(calendarioEscolarRepository.findById(1L)).thenReturn(Optional.of(calendario));
-            when(repository.existsByPessoaAlunoIdPessoaAndCalendarioEscolarIdCalendarioEscolarAndAtivoTrue(1L, 1L))
-                    .thenReturn(false);
+            when(aulaRepository.findById(1L)).thenReturn(Optional.of(aula));
+            when(repository.findByAula_IdAulaAndAluno_IdPessoa(1L, 1L)).thenReturn(Optional.empty());
             when(repository.save(any(AlunoFrequencia.class))).thenAnswer(i -> i.getArgument(0));
 
-            AlunoFrequencia resultado = service.registrar(1L, 1L, TipoFrequencia.PRESENTE);
+            AlunoFrequencia resultado = service.registrar(1L, 1L, "PRESENTE");
 
-            assertThat(resultado.getTipoFrequencia()).isEqualTo(TipoFrequencia.PRESENTE);
+            assertThat(resultado.getTipoFrequencia()).isEqualTo("PRESENTE");
             verify(repository).save(any(AlunoFrequencia.class));
         }
 
@@ -164,33 +156,33 @@ class AlunoFrequenciaServiceTest {
         @DisplayName("Deve assumir PRESENTE quando tipo não é informado (padrão)")
         void deveAssumirPresente_quandoTipoNulo() {
             Pessoa aluno = new Pessoa();
-            CalendarioEscolar calendario = new CalendarioEscolar();
+            Aula aula = new Aula();
+            aula.setChamadaEncerrada(false);
 
             when(pessoaRepository.findById(1L)).thenReturn(Optional.of(aluno));
-            when(calendarioEscolarRepository.findById(1L)).thenReturn(Optional.of(calendario));
-            when(repository.existsByPessoaAlunoIdPessoaAndCalendarioEscolarIdCalendarioEscolarAndAtivoTrue(1L, 1L))
-                    .thenReturn(false);
+            when(aulaRepository.findById(1L)).thenReturn(Optional.of(aula));
+            when(repository.findByAula_IdAulaAndAluno_IdPessoa(1L, 1L)).thenReturn(Optional.empty());
             when(repository.save(any(AlunoFrequencia.class))).thenAnswer(i -> i.getArgument(0));
 
             AlunoFrequencia resultado = service.registrar(1L, 1L, null);
 
-            // Quando tipo é nulo, o service deve assumir PRESENTE
-            assertThat(resultado.getTipoFrequencia()).isEqualTo(TipoFrequencia.PRESENTE);
+            assertThat(resultado.getTipoFrequencia()).isEqualTo("PRESENTE");
         }
 
         @Test
         @DisplayName("Deve lançar BusinessException quando já existe frequência ativa para o mesmo aluno/aula")
         void deveLancarBusinessException_quandoFrequenciaDuplicada() {
             Pessoa aluno = new Pessoa();
-            CalendarioEscolar calendario = new CalendarioEscolar();
+            aluno.setIdPessoa(1L);
+            Aula aula = new Aula();
+            aula.setChamadaEncerrada(false);
 
             when(pessoaRepository.findById(1L)).thenReturn(Optional.of(aluno));
-            when(calendarioEscolarRepository.findById(1L)).thenReturn(Optional.of(calendario));
-            // Simula frequência já registrada
-            when(repository.existsByPessoaAlunoIdPessoaAndCalendarioEscolarIdCalendarioEscolarAndAtivoTrue(1L, 1L))
-                    .thenReturn(true);
+            when(aulaRepository.findById(1L)).thenReturn(Optional.of(aula));
+            when(repository.findByAula_IdAulaAndAluno_IdPessoa(1L, 1L))
+                    .thenReturn(Optional.of(new AlunoFrequencia()));
 
-            assertThatThrownBy(() -> service.registrar(1L, 1L, TipoFrequencia.FALTA))
+            assertThatThrownBy(() -> service.registrar(1L, 1L, "FALTA"))
                     .isInstanceOf(BusinessException.class)
                     .hasMessageContaining("já registrada");
 

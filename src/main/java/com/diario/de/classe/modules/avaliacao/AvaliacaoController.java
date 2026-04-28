@@ -28,11 +28,6 @@ public class AvaliacaoController {
         this.alunoAvaliacaoService = alunoAvaliacaoService;
     }
 
-    /**
-     * Lista todas as avaliações ativas.
-     *
-     * @return lista de avaliações com status HTTP 200
-     */
     @Operation(summary = "Listar todas as avaliações")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @GetMapping
@@ -41,12 +36,6 @@ public class AvaliacaoController {
                 service.buscarTodos().stream().map(AvaliacaoDTO::new).toList()));
     }
 
-    /**
-     * Busca uma avaliação pelo ID.
-     *
-     * @param id ID da avaliação
-     * @return avaliação encontrada
-     */
     @Operation(summary = "Buscar avaliação por ID")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @GetMapping("/{id}")
@@ -57,11 +46,8 @@ public class AvaliacaoController {
     /**
      * Cria uma nova avaliação.
      *
-     * <p>O campo {@code peso} define a relevância desta avaliação no cálculo
-     * da média ponderada. Exemplo: prova = 7, trabalho = 3.
-     *
-     * @param dto dados da avaliação (disciplina, materia, dia, peso)
-     * @return avaliação criada com status HTTP 201
+     * <p>Campos opcionais: {@code idCalendarioEscolar} (legado), {@code idPeriodoLetivo} (novo),
+     * {@code tipo} (padrão: PROVA), {@code dia}, {@code peso}.
      */
     @Operation(summary = "Criar avaliação")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
@@ -71,19 +57,17 @@ public class AvaliacaoController {
         entity.setMateria(dto.getMateria());
         entity.setDia(dto.getDia());
         entity.setPeso(dto.getPeso());
+        entity.setTipo(dto.getTipo());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(
-                        new AvaliacaoDTO(service.criar(entity, dto.getIdDisciplina(), dto.getIdCalendarioEscolar())),
+                        new AvaliacaoDTO(service.criar(
+                                entity,
+                                dto.getIdDisciplina(),
+                                dto.getIdCalendarioEscolar(),
+                                dto.getIdPeriodoLetivo())),
                         "Avaliação criada com sucesso"));
     }
 
-    /**
-     * Atualiza uma avaliação existente.
-     *
-     * @param id  ID da avaliação a atualizar
-     * @param dto novos dados da avaliação
-     * @return avaliação atualizada
-     */
     @Operation(summary = "Atualizar avaliação")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR', 'PROFESSOR')")
     @PutMapping("/{id}")
@@ -93,19 +77,16 @@ public class AvaliacaoController {
         dados.setMateria(dto.getMateria());
         dados.setDia(dto.getDia());
         dados.setPeso(dto.getPeso());
+        dados.setTipo(dto.getTipo());
         return ResponseEntity.ok(ApiResponse.ok(
-                new AvaliacaoDTO(service.atualizar(id, dados, dto.getIdDisciplina(), dto.getIdCalendarioEscolar()))));
+                new AvaliacaoDTO(service.atualizar(
+                        id,
+                        dados,
+                        dto.getIdDisciplina(),
+                        dto.getIdCalendarioEscolar(),
+                        dto.getIdPeriodoLetivo()))));
     }
 
-    /**
-     * Desativa (soft delete) uma avaliação.
-     *
-     * <p>O registro não é excluído fisicamente — permanece no banco com
-     * {@code ativo = false} para preservar o histórico de notas vinculadas.
-     *
-     * @param id ID da avaliação a desativar
-     * @return confirmação com status HTTP 200
-     */
     @Operation(summary = "Desativar avaliação (soft delete)")
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'COORDENADOR')")
     @DeleteMapping("/{id}")
@@ -114,18 +95,6 @@ public class AvaliacaoController {
         return ResponseEntity.ok(ApiResponse.ok(null, "Avaliação desativada com sucesso"));
     }
 
-    /**
-     * Lança notas em lote para todos os alunos de uma avaliação.
-     *
-     * <p>Recebe uma lista de pares (idAluno, nota) e persiste cada uma.
-     * Toda a operação é transacional: se um lançamento falhar, nenhum é salvo.
-     * Caso um aluno já tenha nota ativa nesta avaliação, a requisição é rejeitada
-     * com HTTP 422.
-     *
-     * @param id    ID da avaliação alvo (path variable)
-     * @param notas lista de {@link NotaLancamentoDTO} com idAluno, nota e obs
-     * @return lista de notas criadas com status HTTP 201
-     */
     @Operation(
             summary = "Lançar notas em lote",
             description = """

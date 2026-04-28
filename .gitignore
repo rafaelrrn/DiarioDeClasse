@@ -32,6 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
+### MCP ###
+# MCP local config (contém tokens — nunca commitar)
+.vscode/mcp.json
+
 ### Custom ###
 logs/
 .mvn/
